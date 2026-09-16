@@ -1,3 +1,4 @@
 [submodule "gclparser"]
 	path = gclparser
 	url = github:peppidesu/gclparser
+	branch = chore-use-cabal-project-for-z3-includes
