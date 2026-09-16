@@ -69,6 +69,8 @@ executable uu-psav
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.20.2.0
                     , GCLparser
+                    , containers
+                    , pretty
                     , z3
 
     -- Directories containing source files.
