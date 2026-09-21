@@ -15,7 +15,6 @@ data Stmt
     | Assume      G.Expr
     | Assign      String           G.Expr
     | AAssign     String           G.Expr   G.Expr
-    | Unsupported G.Stmt
 
 instance Show Stmt where
     show Skip                   = "skip"
@@ -23,7 +22,6 @@ instance Show Stmt where
     show (Assume cond)          = "assume " ++ show cond
     show (Assign ident e)       = ident ++ " := " ++ show e
     show (AAssign ident i e)    = ident ++ "[" ++ show i ++ "]" ++ " := " ++ show e
-    show (Unsupported s)        = "unsupported < " ++ show s ++ " >"
 
 
 -- |Tree of program paths. Each node is a statement, and its children
@@ -47,7 +45,6 @@ ppStmt (Assert e)      = text "assert " <> G.PP.ppExpr e
 ppStmt (Assume e)      = text "assume " <> G.PP.ppExpr e
 ppStmt (Assign x e)    = text x <> text " := " <> G.PP.ppExpr e
 ppStmt (AAssign x i e) = text x <> char '[' <> G.PP.ppExpr i <> char ']' <> text " := " <> G.PP.ppExpr e
-ppStmt (Unsupported s) = text "Unsupported" <> G.PP.ppStmt s
 
 
 -- | `graftToLeaves f1 f2` walks every tree in `f2` and, at every leaf
