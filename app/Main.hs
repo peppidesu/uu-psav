@@ -17,8 +17,6 @@ data Stmt
     | Assume      G.Expr
     | Assign      String           G.Expr
     | AAssign     String           G.Expr   G.Expr
-    | Seq         Stmt             Stmt
-    | IfThenElse  G.Expr           Stmt     Stmt
 
 instance Show Stmt where
     show Skip                   = "skip"
@@ -61,6 +59,7 @@ ppStmt (AAssign x i e) = text x <> char '[' <> G.PP.ppExpr i <> char ']' <> text
 graftToLeaves :: [Tree a] -> [Tree a] -> [Tree a]
 graftToLeaves t = map (foldTree $ \x ts -> Node x (if null ts then t else ts))
 
+
 ------------------------------------ unroll ------------------------------------
 
 -- |Unrolls a GCL statement. This produces a forest rather than a single tree
@@ -101,21 +100,16 @@ truncatePaths k (Node x ts)
 
 --------------------------------------------------------------------------------
 
-
 wlp :: PathTree -> [G.Expr]
 wlp (Node x []) = [wlp' x (G.LitB True)]
-wlp (Node x ts) = map (\q -> wlp' x q) (concat $ map wlp ts)
+wlp (Node x ts) = map (wlp' x) (concat $ map wlp ts)
 
 wlp' :: Stmt -> G.Expr -> G.Expr
 wlp'  Skip               q  = q
-wlp' (Assert    e)       q  = G.BinopExpr G.And         e q
-wlp' (Assume    e)       q  = G.BinopExpr G.Implication e q
+wlp' (Assert    e)       q  = G.opAnd e q
+wlp' (Assume    e)       q  = G.opImplication e q
 wlp' (Assign  s e)       q  = (foldExpr exprReplaceAlgebra q) s e
 wlp' (AAssign s e e2)    q  = (foldExpr exprRepbyAlgebra   q) s e e2
-wlp' (Seq     s s2)      q  = wlp' s (wlp' s2 q)
-wlp' (IfThenElse g s s2) q = G.BinopExpr G.And
-  (G.BinopExpr G.Implication g (wlp' s q))
-  (G.BinopExpr G.Implication (G.OpNeg g) (wlp' s2 q))
 
 exprIdAlgebra :: ExprAlgebra Expr
 exprIdAlgebra = (
@@ -123,7 +117,6 @@ exprIdAlgebra = (
     \i        -> G.LitI i,
     \b        -> G.LitB b,
                  G.LitNull,
-    \e        -> G.Parens e,
     \e e2     -> G.ArrayElem e e2,
     \e        -> G.OpNeg e,
     \bop e e2 -> G.BinopExpr bop e e2,
@@ -139,7 +132,6 @@ type ExprAlgebra r = (
     Int -> r,                -- liti
     Bool -> r,               -- litb
     r,                       -- litnull
-    r -> r,                  -- parens
     r -> r -> r,
     r -> r,
     G.BinOp -> r -> r -> r,
@@ -153,23 +145,23 @@ type ExprAlgebra r = (
     )
 
 foldExpr :: ExprAlgebra r -> Expr -> r
-foldExpr (var, liti, litb, litnull, parens, arrayelem, opneg, binopexpr, foral, exists, sizeof, repby, cond, newstore, dereference) = f
-            where
-                f (G.Var s)              = var s
-                f (G.LitI n)             = liti n
-                f (G.LitB b)             = litb b
-                f (G.LitNull)            = litnull
-                f (G.Parens e)           = parens (f e)
-                f (G.ArrayElem e e2)     = arrayelem (f e) (f e2)
-                f (G.OpNeg e)            = opneg (f e)
-                f (G.BinopExpr bop e e2) = binopexpr bop (f e) (f e2)
-                f (G.Forall s e)         = foral s (f e)
-                f (G.Exists s e)         = exists s (f e)
-                f (G.SizeOf e)           = sizeof (f e)
-                f (G.RepBy e e2 e3)      = repby (f e) (f e2) (f e3)
-                f (G.Cond e e2 e3)       = cond (f e) (f e2) (f e3)
-                f (G.NewStore e)         = newstore (f e)
-                f (G.Dereference s)      = dereference s
+foldExpr (var, liti, litb, litnull, arrayelem, opneg, binopexpr, foral, exists, sizeof, repby, cond, newstore, dereference) = f
+    where
+        f (G.Var s)              = var s
+        f (G.LitI n)             = liti n
+        f (G.LitB b)             = litb b
+        f (G.LitNull)            = litnull
+        f (G.Parens e)           = f e -- discard parens
+        f (G.ArrayElem e e2)     = arrayelem (f e) (f e2)
+        f (G.OpNeg e)            = opneg (f e)
+        f (G.BinopExpr bop e e2) = binopexpr bop (f e) (f e2)
+        f (G.Forall s e)         = foral s (f e)
+        f (G.Exists s e)         = exists s (f e)
+        f (G.SizeOf e)           = sizeof (f e)
+        f (G.RepBy e e2 e3)      = repby (f e) (f e2) (f e3)
+        f (G.Cond e e2 e3)       = cond (f e) (f e2) (f e3)
+        f (G.NewStore e)         = newstore (f e)
+        f (G.Dereference s)      = dereference s
 
 exprReplaceAlgebra :: ExprAlgebra (String -> Expr -> Expr)
 exprReplaceAlgebra = (
@@ -177,7 +169,7 @@ exprReplaceAlgebra = (
     \i        _   _   -> G.LitI i,
     \b        _   _   -> G.LitB b,
     \         _   _   -> G.LitNull,
-    \e        rps rpe -> G.Parens (e rps rpe),
+
     \e e2     rps rpe -> G.ArrayElem (e rps rpe) (e2 rps rpe),
     \e        rps rpe -> G.OpNeg (e rps rpe),
     \bop e e2 rps rpe -> G.BinopExpr bop (e rps rpe) (e2 rps rpe),
@@ -195,7 +187,6 @@ exprRepbyAlgebra = (
     \i         _   _   _   -> G.LitI i,
     \b         _   _   _   -> G.LitB b,
     \          _   _   _   -> G.LitNull,
-    \e         ars rpi rpe -> G.Parens (e ars rpi rpe),
     \var index ars rpi rpe -> if (getVarName (var ars rpi rpe) == ars)
         then (G.Cond (G.BinopExpr G.Equal (index ars rpi rpe) (rpi)) (rpe) (G.ArrayElem (var ars rpi rpe) (index ars rpi rpe)))
         else (G.ArrayElem (var ars rpi rpe) (index ars rpi rpe)),
@@ -210,20 +201,71 @@ exprRepbyAlgebra = (
     \s         _   _   _   -> G.Dereference s
     )
     where getVarName (G.Var s) = s
-    -- TODO: think about what we want to happen when an arrayelem expr has as first expr (the one denoting the name of the array)
-    -- is not of type var
+          getVarName _ = error "unreachable"
+exprVerbEqAlgebra :: ExprAlgebra Expr
+exprVerbEqAlgebra = let
+    verbatimEquality bop e e2 | bop `elem` [G.Equal, G.GreaterThanEqual, G.LessThanEqual] && e == e2 = G.LitB True
+                              | bop `elem` [G.LessThan, G.GreaterThan] && e == e2 = G.LitB False
+                              | otherwise = G.BinopExpr bop e e2
+ in (
+    \s        -> G.Var s,
+    \i        -> G.LitI i,
+    \b        -> G.LitB b,
+    G.LitNull,
+    \e e2     -> G.ArrayElem e e2,
+    \e        -> G.OpNeg e,
+    verbatimEquality,
+    \s e      -> G.Forall s e,
+    \s e      -> G.Exists s e,
+    \e        -> G.SizeOf e,
+    \e e2 e3  -> G.RepBy e e2 e3,
+    \e e2 e3  -> G.Cond e e2 e3,
+    \e        -> G.NewStore e,
+    \s        -> G.Dereference s )
 
-
-
+exprTautologyAlgebra :: ExprAlgebra Expr
+exprTautologyAlgebra = let
+    tautology G.And e e2  | e == G.LitB (True) = e2
+                        | e2 == G.LitB (True) = e
+                        | otherwise = G.opAnd e e2
+    tautology G.Or e e2  | e == G.LitB (False) = e2
+                        | e2 == G.LitB (False) = e
+                        | otherwise = G.opAnd e e2
+    tautology bop e e2 = G.BinopExpr bop e e2
+ in (
+    \s        -> G.Var s,
+    \i        -> G.LitI i,
+    \b        -> G.LitB b,
+    G.LitNull,
+    \e e2     -> G.ArrayElem e e2,
+    \e        -> G.OpNeg e,
+    tautology,
+    \s e      -> G.Forall s e,
+    \s e      -> G.Exists s e,
+    \e        -> G.SizeOf e,
+    \e e2 e3  -> G.RepBy e e2 e3,
+    \e e2 e3  -> G.Cond e e2 e3,
+    \e        -> G.NewStore e,
+    \s        -> G.Dereference s )
 --------------------------------------------------------------------------------
 
-test :: IO [PathTree]
+test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./gclparser/examples/E.gcl"
-    return $ mapMaybe (truncatePaths 20) $ unroll $ G.stmt prog
+    Right(prog) <- parseGCLfile "./gclparser/examples/min.gcl"
+    let paths = mapMaybe (truncatePaths 20) $ unroll $ G.stmt prog
+    return $ concatMap wlp paths
+
+optimizeUntilIdempotence exprs = let
+    optimized = foldr1 (.) (map foldExpr [
+        exprVerbEqAlgebra,
+        exprTautologyAlgebra
+     ]) exprs;
+ in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
 
 main :: IO ()
-main = do
-    pts <- test
-    _ <- mapM (putStrLn . ppPathTree2String) pts
+main = let
+ in do
+    exprs <- test
+    let optimized = map optimizeUntilIdempotence exprs
+    _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
     return ()
