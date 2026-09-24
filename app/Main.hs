@@ -247,18 +247,64 @@ exprTautologyAlgebra = let
     \e e2 e3  -> G.Cond e e2 e3,
     \e        -> G.NewStore e,
     \s        -> G.Dereference s )
+
+exprIntCalcAlgebra :: ExprAlgebra Expr
+exprIntCalcAlgebra = (
+    \s        -> G.Var s,
+    \i        -> G.LitI i,
+    \b        -> G.LitB b,
+                 G.LitNull,
+    \e e2     -> G.ArrayElem e e2,
+    \e        -> G.OpNeg e,
+    \bop e e2 -> calc bop e e2,
+    \s e      -> G.Forall s e,
+    \s e      -> G.Exists s e,
+    \e        -> G.SizeOf e,
+    \e e2 e3  -> G.RepBy e e2 e3,
+    \e e2 e3  -> G.Cond e e2 e3,
+    \e        -> G.NewStore e,
+    \s        -> G.Dereference s )
+    where
+      calc G.Plus     (G.LitI a) (G.LitI b)                          = G.LitI (a + b)
+      calc G.Plus     ((G.BinopExpr G.Plus  e (G.LitI a))) (G.LitI b) = G.BinopExpr G.Plus e (G.LitI (a + b))
+      calc G.Plus     ((G.BinopExpr G.Minus e (G.LitI a))) (G.LitI b) | a == b    = e
+                                                                      | a > b     = G.BinopExpr G.Minus e (G.LitI (a - b))
+                                                                      | otherwise = G.BinopExpr G.Plus  e (G.LitI (b - a))
+      calc G.Minus    (G.LitI a) (G.LitI b) = G.LitI (a - b)
+      calc G.Minus    ((G.BinopExpr G.Minus e (G.LitI a))) (G.LitI b) = G.BinopExpr G.Minus e (G.LitI (a + b))
+      calc G.Minus    ((G.BinopExpr G.Plus  e (G.LitI a))) (G.LitI b) | a == b    = e
+                                                                      | a < b     = G.BinopExpr G.Minus e (G.LitI (b - a))
+                                                                      | otherwise = G.BinopExpr G.Plus  e (G.LitI (a - b))
+      calc G.Multiply (G.LitI a) (G.LitI b)                              = G.LitI (a * b)
+      calc G.Multiply ((G.BinopExpr G.Multiply e (G.LitI a))) (G.LitI b) = G.BinopExpr G.Multiply e (G.LitI (a * b))
+      calc G.Multiply ((G.BinopExpr G.Multiply (G.LitI a) e)) (G.LitI b) = G.BinopExpr G.Multiply e (G.LitI (a * b))
+      calc G.Divide   (G.LitI a) (G.LitI b)                              = G.LitI (div a b)
+      calc G.Divide   ((G.BinopExpr G.Divide   e (G.LitI a))) (G.LitI b) = G.BinopExpr G.Divide   e (G.LitI (a * b))
+      calc G.Divide   ((G.BinopExpr G.Divide   (G.LitI a) e)) (G.LitI b) = G.BinopExpr G.Divide   e (G.LitI (a * b))
+      calc G.LessThan         (G.LitI a) (G.LitI b) = G.LitB (a < b)
+      calc G.LessThanEqual    (G.LitI a) (G.LitI b) = G.LitB (a <= b)
+      calc G.GreaterThan      (G.LitI a) (G.LitI b) = G.LitB (a > b)
+      calc G.GreaterThanEqual (G.LitI a) (G.LitI b) = G.LitB (a >= b)
+      calc bop e e2 = G.BinopExpr bop e e2
+
+
+-- TODO: opneg
+-- TODO: Cond
+-- TODO: dealing with minus in LitI (is this necessary?)
+
 --------------------------------------------------------------------------------
 
 test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./gclparser/examples/min.gcl"
+    Right(prog) <- parseGCLfile "./gclparser/examples/S1.gcl"
     let paths = mapMaybe (truncatePaths 20) $ unroll $ G.stmt prog
     return $ concatMap wlp paths
 
 optimizeUntilIdempotence exprs = let
     optimized = foldr1 (.) (map foldExpr [
         exprVerbEqAlgebra,
-        exprTautologyAlgebra
+        exprTautologyAlgebra,
+        exprIntCalcAlgebra
      ]) exprs;
  in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
 
