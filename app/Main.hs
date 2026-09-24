@@ -205,7 +205,8 @@ exprRepbyAlgebra = (
 exprVerbEqAlgebra :: ExprAlgebra Expr
 exprVerbEqAlgebra = let
     verbatimEquality bop e e2 | bop `elem` [G.Equal, G.GreaterThanEqual, G.LessThanEqual] && e == e2 = G.LitB True
-                              | bop `elem` [G.LessThan, G.GreaterThan] && e == e2 = G.LitB False
+                              | bop == G.Equal                                            && e /= e2 = G.LitB False
+                              | bop `elem` [G.LessThan, G.GreaterThan]                    && e == e2 = G.LitB False
                               | otherwise = G.BinopExpr bop e e2
  in (
     \s        -> G.Var s,
@@ -226,25 +227,36 @@ exprVerbEqAlgebra = let
 exprTautologyAlgebra :: ExprAlgebra Expr
 exprTautologyAlgebra = let
     tautology G.And e e2  | e == G.LitB (True) = e2
-                        | e2 == G.LitB (True) = e
-                        | otherwise = G.opAnd e e2
-    tautology G.Or e e2  | e == G.LitB (False) = e2
-                        | e2 == G.LitB (False) = e
-                        | otherwise = G.opAnd e e2
+                          | e2 == G.LitB (True) = e
+                          | otherwise = G.opAnd e e2
+    tautology G.Or  e e2  | e == G.LitB (False) = e2
+                          | e2 == G.LitB (False) = e
+                          | otherwise = G.opAnd e e2
+    tautology G.Implication e e2 | e == G.LitB (False) = G.LitB (True)
+                                 | e2 == G.LitB (True) = G.LitB (True)
+                                 | e  == G.LitB (True) && e2 == G.LitB (False) = G.LitB (False)
+                                 | e2 == G.LitB (False)                        = G.OpNeg e
+                                 | otherwise = G.opImplication e e2
     tautology bop e e2 = G.BinopExpr bop e e2
- in (
+    cond (G.LitB True)  e _  = e
+    cond (G.LitB False) _ e2 = e2
+    cond g              e e2 = G.Cond g e e2
+    opneg (G.LitB True)      = G.LitB False
+    opneg (G.LitB False)     = G.LitB True
+    opneg e                  = e
+  in (
     \s        -> G.Var s,
     \i        -> G.LitI i,
     \b        -> G.LitB b,
     G.LitNull,
     \e e2     -> G.ArrayElem e e2,
-    \e        -> G.OpNeg e,
+    opneg,
     tautology,
     \s e      -> G.Forall s e,
     \s e      -> G.Exists s e,
     \e        -> G.SizeOf e,
     \e e2 e3  -> G.RepBy e e2 e3,
-    \e e2 e3  -> G.Cond e e2 e3,
+    \e e2 e3  -> cond e e2 e3,
     \e        -> G.NewStore e,
     \s        -> G.Dereference s )
 
@@ -287,16 +299,13 @@ exprIntCalcAlgebra = (
       calc G.GreaterThanEqual (G.LitI a) (G.LitI b) = G.LitB (a >= b)
       calc bop e e2 = G.BinopExpr bop e e2
 
-
--- TODO: opneg
--- TODO: Cond
 -- TODO: dealing with minus in LitI (is this necessary?)
 
 --------------------------------------------------------------------------------
 
 test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./gclparser/examples/S1.gcl"
+    Right(prog) <- parseGCLfile "./gclparser/examples/E.gcl"
     let paths = mapMaybe (truncatePaths 20) $ unroll $ G.stmt prog
     return $ concatMap wlp paths
 
