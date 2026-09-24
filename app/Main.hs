@@ -10,6 +10,7 @@ import Data.Maybe (mapMaybe)
 import Text.PrettyPrint (Doc, text, char, nest, vcat, ($$))
 import GCLParser.GCLDatatype (Expr(BinopExpr))
 import Z3.Base as Z
+import Control.Monad
 
 data Stmt
     = Skip
@@ -170,34 +171,34 @@ exprReplaceAlgebra = (
     \b        _   _   -> G.LitB b,
     \         _   _   -> G.LitNull,
 
-    \e e2     rps rpe -> G.ArrayElem (e rps rpe) (e2 rps rpe),
-    \e        rps rpe -> G.OpNeg (e rps rpe),
+    \e e2     rps rpe -> G.ArrayElem     (e rps rpe) (e2 rps rpe),
+    \e        rps rpe -> G.OpNeg         (e rps rpe),
     \bop e e2 rps rpe -> G.BinopExpr bop (e rps rpe) (e2 rps rpe),
-    \s e      rps rpe -> G.Forall s (e rps rpe),
-    \s e      rps rpe -> G.Exists s (e rps rpe),
-    \e        rps rpe -> G.SizeOf (e rps rpe),
-    \e e2 e3  rps rpe -> G.RepBy (e rps rpe) (e2 rps rpe) (e3 rps rpe),
-    \e e2 e3  rps rpe -> G.Cond (e rps rpe) (e2 rps rpe) (e3 rps rpe),
-    \e        rps rpe -> G.NewStore (e rps rpe),
+    \s e      rps rpe -> G.Forall s      (e rps rpe),
+    \s e      rps rpe -> G.Exists s      (e rps rpe),
+    \e        rps rpe -> G.SizeOf        (e rps rpe),
+    \e e2 e3  rps rpe -> G.RepBy         (e rps rpe) (e2 rps rpe) (e3 rps rpe),
+    \e e2 e3  rps rpe -> G.Cond          (e rps rpe) (e2 rps rpe) (e3 rps rpe),
+    \e        rps rpe -> G.NewStore      (e rps rpe),
     \s        _   _   -> G.Dereference s )
 
 exprRepbyAlgebra :: ExprAlgebra (String -> Expr -> Expr -> Expr)
 exprRepbyAlgebra = (
-    \s         _   _   _   -> G.Var s,
+    \s         _   _   _   -> G.Var  s,
     \i         _   _   _   -> G.LitI i,
     \b         _   _   _   -> G.LitB b,
     \          _   _   _   -> G.LitNull,
     \var index ars rpi rpe -> if (getVarName (var ars rpi rpe) == ars)
         then (G.Cond (G.BinopExpr G.Equal (index ars rpi rpe) (rpi)) (rpe) (G.ArrayElem (var ars rpi rpe) (index ars rpi rpe)))
         else (G.ArrayElem (var ars rpi rpe) (index ars rpi rpe)),
-    \e         ars rpi rpe -> G.OpNeg (e ars rpi rpe),
+    \e         ars rpi rpe -> G.OpNeg         (e ars rpi rpe),
     \bop e e2  ars rpi rpe -> G.BinopExpr bop (e ars rpi rpe) (e2 ars rpi rpe),
-    \s e       ars rpi rpe -> G.Forall s (e ars rpi rpe),
-    \s e       ars rpi rpe -> G.Exists s (e ars rpi rpe),
-    \e         ars rpi rpe -> G.SizeOf (e ars rpi rpe),
-    \e e2 e3   ars rpi rpe -> G.RepBy (e ars rpi rpe) (e2 ars rpi rpe) (e3 ars rpi rpe),
-    \e e2 e3   ars rpi rpe -> G.Cond (e ars rpi rpe) (e2 ars rpi rpe) (e3 ars rpi rpe),
-    \e         ars rpi rpe -> G.NewStore (e ars rpi rpe),
+    \s e       ars rpi rpe -> G.Forall s      (e ars rpi rpe),
+    \s e       ars rpi rpe -> G.Exists s      (e ars rpi rpe),
+    \e         ars rpi rpe -> G.SizeOf        (e ars rpi rpe),
+    \e e2 e3   ars rpi rpe -> G.RepBy         (e ars rpi rpe) (e2 ars rpi rpe) (e3 ars rpi rpe),
+    \e e2 e3   ars rpi rpe -> G.Cond          (e ars rpi rpe) (e2 ars rpi rpe) (e3 ars rpi rpe),
+    \e         ars rpi rpe -> G.NewStore      (e ars rpi rpe),
     \s         _   _   _   -> G.Dereference s
     )
     where getVarName (G.Var s) = s
@@ -205,33 +206,37 @@ exprRepbyAlgebra = (
 exprVerbEqAlgebra :: ExprAlgebra Expr
 exprVerbEqAlgebra = let
     verbatimEquality bop e e2 | bop `elem` [G.Equal, G.GreaterThanEqual, G.LessThanEqual] && e == e2 = G.LitB True
-                              | bop == G.Equal                                            && e /= e2 = G.LitB False
+                              | bop == G.Equal && isLit e && isLit e2                     && e /= e2 = G.LitB False
                               | bop `elem` [G.LessThan, G.GreaterThan]                    && e == e2 = G.LitB False
                               | otherwise = G.BinopExpr bop e e2
+    isLit (G.LitB _)  = True
+    isLit (G.LitI _)  = True
+    isLit (G.LitNull) = True
+    isLit _           = False
  in (
     \s        -> G.Var s,
     \i        -> G.LitI i,
     \b        -> G.LitB b,
     G.LitNull,
     \e e2     -> G.ArrayElem e e2,
-    \e        -> G.OpNeg e,
+    \e        -> G.OpNeg     e,
     verbatimEquality,
     \s e      -> G.Forall s e,
     \s e      -> G.Exists s e,
     \e        -> G.SizeOf e,
     \e e2 e3  -> G.RepBy e e2 e3,
-    \e e2 e3  -> G.Cond e e2 e3,
+    \e e2 e3  -> G.Cond  e e2 e3,
     \e        -> G.NewStore e,
     \s        -> G.Dereference s )
 
 exprTautologyAlgebra :: ExprAlgebra Expr
 exprTautologyAlgebra = let
     tautology G.And e e2  | e == G.LitB (False) || e2 == G.LitB (False) = G.LitB (False)
-                          | e == G.LitB (True) = e2
+                          | e == G.LitB (True)  = e2
                           | e2 == G.LitB (True) = e
                           | otherwise = G.opAnd e e2
     tautology G.Or  e e2  | e == G.LitB (True) || e2 == G.LitB (True) = G.LitB (True)
-                          | e == G.LitB (False) = e2
+                          | e == G.LitB (False)  = e2
                           | e2 == G.LitB (False) = e
                           | otherwise = G.opOr     e e2
     tautology G.Implication e e2 | e == G.LitB (False) = G.LitB (True)
@@ -245,7 +250,7 @@ exprTautologyAlgebra = let
     cond g              e e2 = G.Cond g e e2
     opneg (G.LitB True)      = G.LitB False
     opneg (G.LitB False)     = G.LitB True
-    opneg e                  = e
+    opneg e                  = G.OpNeg e
   in (
     \s        -> G.Var s,
     \i        -> G.LitI i,
@@ -258,7 +263,7 @@ exprTautologyAlgebra = let
     \s e      -> G.Exists s e,
     \e        -> G.SizeOf e,
     \e e2 e3  -> G.RepBy e e2 e3,
-    \e e2 e3  -> cond e e2 e3,
+    \e e2 e3  -> cond    e e2 e3,
     \e        -> G.NewStore e,
     \s        -> G.Dereference s )
 
@@ -275,11 +280,11 @@ exprIntCalcAlgebra = (
     \s e      -> G.Exists s e,
     \e        -> G.SizeOf e,
     \e e2 e3  -> G.RepBy e e2 e3,
-    \e e2 e3  -> G.Cond e e2 e3,
+    \e e2 e3  -> G.Cond  e e2 e3,
     \e        -> G.NewStore e,
     \s        -> G.Dereference s )
     where
-      calc G.Plus     (G.LitI a) (G.LitI b)                          = G.LitI (a + b)
+      calc G.Plus     (G.LitI a) (G.LitI b)                           = G.LitI (a + b)
       calc G.Plus     ((G.BinopExpr G.Plus  e (G.LitI a))) (G.LitI b) = G.BinopExpr G.Plus e (G.LitI (a + b))
       calc G.Plus     ((G.BinopExpr G.Minus e (G.LitI a))) (G.LitI b) | a == b    = e
                                                                       | a > b     = G.BinopExpr G.Minus e (G.LitI (a - b))
@@ -308,20 +313,23 @@ exprRewriteAlgebra = (
     \b        -> G.LitB b,
                  G.LitNull,
     \e e2     -> G.ArrayElem e e2,
-    \e        -> G.OpNeg e,
+    removeDoubleNeg,
     rewriteImplication,
     \s e      -> G.Forall s e,
     \s e      -> G.Exists s e,
     \e        -> G.SizeOf e,
     \e e2 e3  -> G.RepBy e e2 e3,
-    \e e2 e3  -> G.Cond e e2 e3,
+    \e e2 e3  -> G.Cond  e e2 e3,
     \e        -> G.NewStore e,
     \s        -> G.Dereference s )
     where 
       rewriteImplication G.Implication e e2 = G.opOr (G.OpNeg e) (e2)
       rewriteImplication bop           e e2 = G.BinopExpr bop e e2
+      removeDoubleNeg (G.OpNeg e)           = e
+      removeDoubleNeg e                     = G.OpNeg e
 
 -- TODO: dealing with minus in LitI (is this necessary?)
+-- TODO: consider simplifying not (a or b) to (not a) and (not b)
 
 --------------------------------------------------------------------------------
 
@@ -340,10 +348,24 @@ optimizeUntilIdempotence exprs = let
      ]) exprs;
  in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
 
+optimizeTrace :: (Expr, Int) -> IO ()
+optimizeTrace (exprs, index) = let
+    optimized = foldr1 (.) (map foldExpr [
+        exprVerbEqAlgebra,
+        exprTautologyAlgebra,
+        exprIntCalcAlgebra,
+        exprRewriteAlgebra
+     ]) exprs;
+ in do
+  _ <- putStrLn $ show $ G.PP.ppExpr exprs
+  _ <- putStrLn (show index ++"-----")
+  when (optimized /= exprs) $ optimizeTrace (optimized, index)
+
 main :: IO ()
 main = let
  in do
     exprs <- test
     let optimized = map optimizeUntilIdempotence exprs
     _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
+    -- _ <- mapM (optimizeTrace) (zip exprs [0..])
     return ()
