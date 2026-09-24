@@ -230,7 +230,8 @@ exprTautologyAlgebra = let
                           | e == G.LitB (True) = e2
                           | e2 == G.LitB (True) = e
                           | otherwise = G.opAnd e e2
-    tautology G.Or  e e2  | e == G.LitB (False) = e2
+    tautology G.Or  e e2  | e == G.LitB (True) || e2 == G.LitB (True) = G.LitB (True)
+                          | e == G.LitB (False) = e2
                           | e2 == G.LitB (False) = e
                           | otherwise = G.opOr     e e2
     tautology G.Implication e e2 | e == G.LitB (False) = G.LitB (True)
@@ -326,7 +327,7 @@ exprRewriteAlgebra = (
 
 test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./gclparser/examples/E.gcl"
+    Right(prog) <- parseGCLfile "./gclparser/examples/test.gcl"
     let paths = mapMaybe (truncatePaths 20) $ unroll $ G.stmt prog
     return $ concatMap wlp paths
 
