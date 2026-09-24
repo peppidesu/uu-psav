@@ -226,12 +226,13 @@ exprVerbEqAlgebra = let
 
 exprTautologyAlgebra :: ExprAlgebra Expr
 exprTautologyAlgebra = let
-    tautology G.And e e2  | e == G.LitB (True) = e2
+    tautology G.And e e2  | e == G.LitB (False) || e2 == G.LitB (False) = G.LitB (False)
+                          | e == G.LitB (True) = e2
                           | e2 == G.LitB (True) = e
                           | otherwise = G.opAnd e e2
     tautology G.Or  e e2  | e == G.LitB (False) = e2
                           | e2 == G.LitB (False) = e
-                          | otherwise = G.opAnd e e2
+                          | otherwise = G.opOr     e e2
     tautology G.Implication e e2 | e == G.LitB (False) = G.LitB (True)
                                  | e2 == G.LitB (True) = G.LitB (True)
                                  | e  == G.LitB (True) && e2 == G.LitB (False) = G.LitB (False)
@@ -299,6 +300,26 @@ exprIntCalcAlgebra = (
       calc G.GreaterThanEqual (G.LitI a) (G.LitI b) = G.LitB (a >= b)
       calc bop e e2 = G.BinopExpr bop e e2
 
+exprRewriteAlgebra :: ExprAlgebra Expr
+exprRewriteAlgebra = (
+    \s        -> G.Var s,
+    \i        -> G.LitI i,
+    \b        -> G.LitB b,
+                 G.LitNull,
+    \e e2     -> G.ArrayElem e e2,
+    \e        -> G.OpNeg e,
+    rewriteImplication,
+    \s e      -> G.Forall s e,
+    \s e      -> G.Exists s e,
+    \e        -> G.SizeOf e,
+    \e e2 e3  -> G.RepBy e e2 e3,
+    \e e2 e3  -> G.Cond e e2 e3,
+    \e        -> G.NewStore e,
+    \s        -> G.Dereference s )
+    where 
+      rewriteImplication G.Implication e e2 = G.opOr (G.OpNeg e) (e2)
+      rewriteImplication bop           e e2 = G.BinopExpr bop e e2
+
 -- TODO: dealing with minus in LitI (is this necessary?)
 
 --------------------------------------------------------------------------------
@@ -313,7 +334,8 @@ optimizeUntilIdempotence exprs = let
     optimized = foldr1 (.) (map foldExpr [
         exprVerbEqAlgebra,
         exprTautologyAlgebra,
-        exprIntCalcAlgebra
+        exprIntCalcAlgebra,
+        exprRewriteAlgebra
      ]) exprs;
  in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
 
