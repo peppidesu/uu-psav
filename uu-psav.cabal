@@ -72,9 +72,58 @@ executable uu-psav
                     , containers
                     , pretty
                     , z3
+                    , uu-psav
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+executable test
+    -- Import common warning flags.
+    import:           warnings
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          Test.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:    base ^>=4.20.2.0
+                    , GCLparser
+                    , containers
+                    , pretty
+                    , z3
+                    , uu-psav
+                    , extra
+
+    -- Directories containing source files.
+    hs-source-dirs:   app
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
+
+library
+   import:  warnings
+
+   exposed-modules: CLI
+
+   other-modules: Z3Conf
+
+   build-depends:    base ^>=4.20.2.0
+                   , GCLparser
+                   , containers
+                   , pretty
+                   , z3
+                   , extra
+
+   hs-source-dirs:   src
+
+   default-language: Haskell2010
+
