@@ -1,3 +1,9 @@
 packages: .
-          gclparser
+
 documentation: False
+
+source-repository-package
+  type: git
+  location: https://github.com/wooshrow/gclparser.git
+  tag: db1b784171bfe00bf226ff0491d01a074fdc373f
+
