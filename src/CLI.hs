@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, OverloadedRecordDot #-}
 
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 -- | Module that parses the arguments given to the executable
 
 module CLI (
@@ -15,6 +17,7 @@ where
 
 import System.Environment
 import System.Console.GetOpt
+import Data.Maybe (fromJust)
 import GCLParser.Parser (parseGCLfile, ParseResult)
 import GCLParser.GCLDatatype 
 import Data.List.Extra (mconcatMap)
@@ -86,7 +89,7 @@ createSettings argv =
          (o,[],[] ) -> return $ foldl (flip id) defaultOptions o
          (_,_,errs) -> ioError (userError (concat errs ++ usage))
 
-
+         
 -- | Get the configuration parameters
 -- 
 getOpts :: IO Options
@@ -108,23 +111,21 @@ type PlainData = CLIGeneric PathLength [(String,String)] (ParseResult Program)
 getPlain :: IO PlainData
 getPlain = do
         opts <- getOpts
-        let progPaths = opts.gcl
-            confPath  = opts.conf
-            numKMaybe = opts.plength
+        progs <- mapM parseGCLfile opts.gcl
+        plainConf <- Z3Conf.getPlain opts.conf
+        let numKMaybe = opts.plength
             showHelp'  = opts.showHelp
-            parseGCLFiles = mapM parseGCLfile progPaths
-            
-         in do progs <- parseGCLFiles
-               plainConf <- Z3Conf.getPlain confPath
-               case numKMaybe of
-                 Nothing -> ioError $ userError $ "\nError: Flag -K is required\n" ++ usage 
-                 Just k -> return CLI {
-                   plength  = k,
+            plainData =  CLI {
+                   plength  = fromJust numKMaybe,
                    conf     = plainConf,
                    gcl      = progs,
                    showHelp = showHelp'
-                   }
+                   }   
+         in if (numKMaybe == Nothing || fromJust numKMaybe <= 0) && not showHelp'
+            then ioError $ userError $ ['\n'] ++ "Error: Flag -K is required or arg given is not positive" ++ ['\n'] ++ usage 
+            else return plainData
 
+-- | Program files are parsed and the options are processed into Z3.Opt values lazily
 type Inputs = CLIGeneric PathLength Z3.Opts (ParseResult Program)
 
 plainToZ3Opt :: PlainData -> Inputs

@@ -7,5 +7,5 @@ import CLI (getPlain, getInputs, usage, Options, CLIGeneric(..), PlainData)
 main = do
      inputs <- getPlain
      if inputs.showHelp
-     then print usage
+     then putStrLn usage
      else print inputs
