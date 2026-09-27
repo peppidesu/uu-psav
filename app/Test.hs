@@ -1,7 +1,11 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Main (main) where
 
-import CLI
+import CLI (getPlain, getInputs, usage, Options, CLIGeneric(..), PlainData)
 
 main = do
      inputs <- getPlain
-     print inputs
+     if inputs.showHelp
+     then print usage
+     else print inputs
