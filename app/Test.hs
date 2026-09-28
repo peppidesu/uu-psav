@@ -9,3 +9,4 @@ main = do
      if inputs.showHelp
      then putStrLn usage
      else print inputs
+
