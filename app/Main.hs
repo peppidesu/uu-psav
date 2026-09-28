@@ -11,11 +11,12 @@ import Control.Monad
 import WLP
 import Unroll (unrollUntil)
 import Optimize
+import PrettyPrint (ppPathTree2String)
 
 test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./examples/test.gcl"
-    let paths = unrollUntil 20 $ G.stmt prog
+    Right(prog) <- parseGCLfile "./examples/benchmark/bsort.gcl"
+    let paths = unrollUntil 30 $ G.stmt prog
     return $ concatMap wlp paths
 
 optimizeUntilIdempotence :: Expr -> Expr

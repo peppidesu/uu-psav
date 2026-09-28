@@ -4,7 +4,7 @@ import Types
 import Text.PrettyPrint
 import Prelude hiding ((<>))
 import Data.Tree
-import GCLParser.PrettyPrint (ppExpr)
+import GCLParser.PrettyPrint (ppExpr, ppVarDeclarations, tab)
 
 -- |Pretty prints a `PathTree`
 ppPathTree2String :: PathTree -> String
@@ -17,8 +17,8 @@ ppPathTree = go
     go (Node s cs)     = ppStmt s $$ nest 2 (vcat (map go cs))
 
 ppStmt :: Stmt -> Doc
-ppStmt Skip            = text "skip"
-ppStmt (Assert e)      = text "assert " <> ppExpr e
-ppStmt (Assume e)      = text "assume " <> ppExpr e
-ppStmt (Assign x e)    = text x <> text " := " <> ppExpr e
-ppStmt (AAssign x i e) = text x <> char '[' <> ppExpr i <> char ']' <> text " := " <> ppExpr e
+ppStmt Skip               = text "skip"
+ppStmt (Assert e)         = text "assert " <> ppExpr e
+ppStmt (Assume e)         = text "assume " <> ppExpr e
+ppStmt (Assign x e)       = text x <> text " := " <> ppExpr e
+ppStmt (AAssign x i e)    = text x <> char '[' <> ppExpr i <> char ']' <> text " := " <> ppExpr e

@@ -18,6 +18,7 @@ instance Show Stmt where
     show (Assign ident e)       = ident ++ " := " ++ show e
     show (AAssign ident i e)    = ident ++ "[" ++ show i ++ "]" ++ " := " ++ show e
 
+
 -- |Tree of program paths. Each node is a statement, and its children
 -- are next statements that can be executed. Exploring to a leaf node produces
 -- a program path.
