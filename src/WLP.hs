@@ -8,11 +8,11 @@ wlp (Node x []) = [wlp' x (LitB True)]
 wlp (Node x ts) = map (wlp' x) (concat $ map wlp ts)
 
 wlp' :: Stmt -> Expr -> Expr
-wlp'  Skip               q  = q
-wlp' (Assert    e)       q  = opAnd e q
-wlp' (Assume    e)       q  = opImplication e q
-wlp' (Assign  s e)       q  = (foldExpr exprReplaceAlgebra q) s e
-wlp' (AAssign s e e2)    q  = (foldExpr exprRepbyAlgebra   q) s e e2
+wlp'  Skip               q = q
+wlp' (Assert    e)       q = opAnd e q
+wlp' (Assume    e)       q = opImplication e q
+wlp' (Assign  s e)       q = (foldExpr exprReplaceAlgebra q) s e
+wlp' (AAssign s e e2)    q = (foldExpr exprRepbyAlgebra   q) s e e2
 
 foldExpr :: ExprAlgebra r -> Expr -> r
 foldExpr (var, liti, litb, litnull, arrayelem, opneg, binopexpr, foral, exists, sizeof, repby, cond, newstore, dereference) = f
@@ -51,6 +51,23 @@ exprReplaceAlgebra = (
     \e        rps rpe -> NewStore      (e rps rpe),
     \s        _   _   -> Dereference s )
 
+exprVarDeclAlgebra = (
+    \s        rps rpe -> (if rps == s then rpe else Var s),
+    \i        _   _   -> LitI i,
+    \b        _   _   -> LitB b,
+    \         _   _   -> LitNull,
+
+    \e e2     rps rpe -> ArrayElem     (e rps rpe) (e2 rps rpe),
+    \e        rps rpe -> OpNeg         (e rps rpe),
+    \bop e e2 rps rpe -> BinopExpr bop (e rps rpe) (e2 rps rpe),
+    \s e      rps rpe -> Forall s      (e rps rpe),
+    \s e      rps rpe -> Exists s      (e rps rpe),
+    \e        rps rpe -> SizeOf        (e rps rpe),
+    \e e2 e3  rps rpe -> RepBy         (e rps rpe) (e2 rps rpe) (e3 rps rpe),
+    \e e2 e3  rps rpe -> Cond          (e rps rpe) (e2 rps rpe) (e3 rps rpe),
+    \e        rps rpe -> NewStore      (e rps rpe),
+    \s        _   _   -> Dereference s )
+
 exprRepbyAlgebra :: ExprAlgebra (String -> Expr -> Expr -> Expr)
 exprRepbyAlgebra = (
     \s         _   _   _   -> Var  s,
@@ -73,4 +90,3 @@ exprRepbyAlgebra = (
   where
     getVarName (Var s) = s
     getVarName _ = error "unreachable"
-

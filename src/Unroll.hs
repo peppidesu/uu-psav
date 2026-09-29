@@ -38,6 +38,7 @@ unroll (G.Assume e)             = [pure $ Assume e]
 unroll (G.Assert e)             = [pure $ Assert e]
 unroll (G.Assign ident e)       = [pure $ Assign ident e]
 unroll (G.AAssign ident eIdx e) = [pure $ AAssign ident eIdx e]
+unroll (G.Block vardecls s)     = unroll s
 
 -- handles `skip` primitive and short-circuits statements we don't support
 unroll _                        = [pure $ Skip]

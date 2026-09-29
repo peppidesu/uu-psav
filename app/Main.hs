@@ -12,11 +12,12 @@ import WLP
 import Unroll (unrollUntil)
 import Feasibility (wlpAlwaysFeasibilityCheck)
 import Optimize
+import PrettyPrint (ppPathTree2String)
 
 test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./examples/reverse.gcl"
-    let paths = unrollUntil 20 $ G.stmt prog
+    Right(prog) <- parseGCLfile "./examples/benchmark/bsort.gcl"
+    let paths = unrollUntil 30 $ G.stmt prog
     return $ concatMap (flip wlpAlwaysFeasibilityCheck []) paths
 
 optimizeUntilIdempotence :: Expr -> Expr
@@ -46,7 +47,7 @@ main :: IO ()
 main = let
  in do
     exprs <- test
-    -- let optimized = map optimizeUntilIdempotence exprs
-    -- _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
-    _ <- mapM (optimizeTrace) (zip exprs [0..])
+    let optimized = map optimizeUntilIdempotence exprs
+    _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
+    -- _ <- mapM (optimizeTrace) (zip exprs [0..])
     return ()
