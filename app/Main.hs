@@ -10,13 +10,14 @@ import qualified GCLParser.PrettyPrint as G.PP
 import Control.Monad
 import WLP
 import Unroll (unrollUntil)
+import Feasibility (wlpAlwaysFeasibilityCheck)
 import Optimize
 
 test :: IO [Expr]
 test = do
-    Right(prog) <- parseGCLfile "./examples/test.gcl"
+    Right(prog) <- parseGCLfile "./examples/reverse.gcl"
     let paths = unrollUntil 20 $ G.stmt prog
-    return $ concatMap wlp paths
+    return $ concatMap (flip wlpAlwaysFeasibilityCheck []) paths
 
 optimizeUntilIdempotence :: Expr -> Expr
 optimizeUntilIdempotence exprs = let
@@ -45,7 +46,7 @@ main :: IO ()
 main = let
  in do
     exprs <- test
-    let optimized = map optimizeUntilIdempotence exprs
-    _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
-    -- _ <- mapM (optimizeTrace) (zip exprs [0..])
+    -- let optimized = map optimizeUntilIdempotence exprs
+    -- _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
+    _ <- mapM (optimizeTrace) (zip exprs [0..])
     return ()

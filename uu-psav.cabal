@@ -118,6 +118,7 @@ library
                   , PrettyPrint
                   , WLP
                   , Optimize
+                  , Feasibility
 
    other-modules: Z3Conf
 
