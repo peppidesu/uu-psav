@@ -20,29 +20,6 @@ test = do
     let paths = unrollUntil 30 $ G.stmt prog
     return $ concatMap (flip wlpAlwaysFeasibilityCheck []) paths
 
-optimizeUntilIdempotence :: Expr -> Expr
-optimizeUntilIdempotence exprs = let
-    optimized = foldr1 (.) (map foldExpr [
-        exprVerbEqAlgebra,
-        exprTautologyAlgebra,
-        exprIntCalcAlgebra,
-        exprRewriteAlgebra
-     ]) exprs;
- in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
-
-optimizeTrace :: (Expr, Int) -> IO ()
-optimizeTrace (exprs, index) = let
-    optimized = foldr1 (.) (map foldExpr [
-        exprVerbEqAlgebra,
-        exprTautologyAlgebra,
-        exprIntCalcAlgebra,
-        exprRewriteAlgebra
-     ]) exprs;
- in do
-  _ <- putStrLn $ show $ G.PP.ppExpr exprs
-  _ <- putStrLn (show index ++"-----")
-  when (optimized /= exprs) $ optimizeTrace (optimized, index)
-
 main :: IO ()
 main = let
  in do

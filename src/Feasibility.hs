@@ -3,6 +3,8 @@ import Types
 import GCLParser.GCLDatatype (Expr(..), opAnd)
 import Data.Tree (Tree(..))
 import WLP(wlp')
+import Debug.Trace
+import Optimize (optimizeUntilIdempotence)
 
 -- | Takes the PathTree to calculate the wlp for, and a list of statements that is used in the recursion that should start empty.
 -- Check the feasibility for every assume statement it encounters, and stops wlp calculation for anything infeasible.
@@ -24,14 +26,14 @@ check :: Expr -> [Stmt] -> Bool
 check e [] = z3Check e
 check e ts = z3Check $ wlpListRevCon ts e
 
--- | Calculates the wlp for the program consisting of the list of statements, which is listed in reverse order. The given epxression is the required post condition.
+-- | Calculates the wlp for the program consisting of the list of statements, which is listed in reverse order. The given expression is the required post condition.
 -- The wlp is calculated conjunctively with regards to assume.
 wlpListRevCon :: [Stmt] -> Expr -> Expr
 wlpListRevCon []     e = e
 wlpListRevCon (t:ts) e = wlpListRevCon ts (wlpCon t e)
 
 z3Check :: Expr -> Bool
-z3Check e = seq e True
+z3Check e = True -- seq (traceWith (\b -> " AAAA" ++ show (optimizeUntilIdempotence b)) e) True
 
 -- | Calculates the wlp, which is conjunctive with regards to assume.
 wlpCon :: Stmt -> Expr -> Expr

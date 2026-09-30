@@ -1,6 +1,9 @@
 module Optimize where
 import GCLParser.GCLDatatype (BinOp(..), Expr (..), opImplication, opAnd, opOr)
 import Types
+import WLP (foldExpr)
+import qualified GCLParser.PrettyPrint as G.PP
+import Control.Monad
 
 exprVerbEqAlgebra :: ExprAlgebra Expr
 exprVerbEqAlgebra = let
@@ -134,6 +137,29 @@ exprRewriteAlgebra = (
       rewriteImplication bop           e e2 = BinopExpr bop e e2
       removeDoubleNeg (OpNeg e)             = e
       removeDoubleNeg e                     = OpNeg e
+
+optimizeUntilIdempotence :: Expr -> Expr
+optimizeUntilIdempotence exprs = let
+    optimized = foldr1 (.) (map foldExpr [
+        exprVerbEqAlgebra,
+        exprTautologyAlgebra,
+        exprIntCalcAlgebra,
+        exprRewriteAlgebra
+     ]) exprs;
+ in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
+
+optimizeTrace :: (Expr, Int) -> IO ()
+optimizeTrace (exprs, index) = let
+    optimized = foldr1 (.) (map foldExpr [
+        exprVerbEqAlgebra,
+        exprTautologyAlgebra,
+        exprIntCalcAlgebra,
+        exprRewriteAlgebra
+     ]) exprs;
+ in do
+  _ <- putStrLn $ show $ G.PP.ppExpr exprs
+  _ <- putStrLn (show index ++"-----")
+  when (optimized /= exprs) $ optimizeTrace (optimized, index)
 
 -- TODO: dealing with minus in LitI (is this necessary?)
 -- TODO: consider simplifying not (a or b) to (not a) and (not b)
