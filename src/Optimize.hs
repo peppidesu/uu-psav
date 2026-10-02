@@ -1,150 +1,183 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Optimize where
-import GCLParser.GCLDatatype (BinOp(..), Expr (..), opImplication, opAnd, opOr)
+import GCLParser.GCLDatatype (BinOp(..), Expr (..), opImplication, opAnd, opOr, Program (name))
 import Types
-import WLP (foldExpr)
 import qualified GCLParser.PrettyPrint as G.PP
 import Control.Monad
+import qualified Data.Map.Strict as M
 
 exprVerbEqAlgebra :: ExprAlgebra Expr
-exprVerbEqAlgebra = let
-    verbatimEquality bop e e2 | bop `elem` [Equal, GreaterThanEqual, LessThanEqual] && e == e2 = LitB True
-                              | bop == Equal && isLit e && isLit e2                 && e /= e2 = LitB False
-                              | bop `elem` [LessThan, GreaterThan]                  && e == e2 = LitB False
-                              | otherwise = BinopExpr bop e e2
+exprVerbEqAlgebra n@(BinopExprF bop e e2)
+    | bop `elem` [Equal, GreaterThanEqual, LessThanEqual] && e == e2 = LitB True
+    | bop == Equal && isLit e && isLit e2                 && e /= e2 = LitB False
+    | bop `elem` [LessThan, GreaterThan]                  && e == e2 = LitB False
+    | otherwise = embed n
+  where
     isLit (LitB _)  = True
     isLit (LitI _)  = True
     isLit (LitNull) = True
     isLit _         = False
- in (
-    \s        -> Var s,
-    \i        -> LitI i,
-    \b        -> LitB b,
-    LitNull,
-    \e e2     -> ArrayElem e e2,
-    \e        -> OpNeg     e,
-    verbatimEquality,
-    \s e      -> Forall s e,
-    \s e      -> Exists s e,
-    \e        -> SizeOf e,
-    \e e2 e3  -> RepBy e e2 e3,
-    \e e2 e3  -> Cond  e e2 e3,
-    \e        -> NewStore e,
-    \s        -> Dereference s )
+exprVerbEqAlgebra n = embed n
 
---- optimizations
 
-exprTautologyAlgebra :: ExprAlgebra Expr
-exprTautologyAlgebra = (
-    \s        -> Var s,
-    \i        -> LitI i,
-    \b        -> LitB b,
-    LitNull,
-    \e e2     -> ArrayElem e e2,
-    opneg,
-    tautology,
-    \s e      -> Forall s e,
-    \s e      -> Exists s e,
-    \e        -> SizeOf e,
-    \e e2 e3  -> RepBy e e2 e3,
-    \e e2 e3  -> cond    e e2 e3,
-    \e        -> NewStore e,
-    \s        -> Dereference s )
-  where
-    tautology And e e2  | e == LitB (False) || e2 == LitB (False) = LitB (False)
-                        | e == LitB (True)                        = e2
-                        | e2 == LitB (True)                       = e
-                        | otherwise = opAnd e e2
-    tautology Or  e e2  | e == LitB (True) || e2 == LitB (True) = LitB (True)
-                        | e == LitB (False)                     = e2
-                        | e2 == LitB (False)                    = e
-                        | otherwise = opOr     e e2
-    tautology Implication e e2 | e == LitB (False)                        = LitB (True)
-                                | e2 == LitB (True)                        = LitB (True)
-                                | e  == LitB (True) && e2 == LitB (False)  = LitB (False)
-                                | e2 == LitB (False)                       = OpNeg e
-                                | otherwise                                = opImplication e e2
-    tautology bop e e2 = BinopExpr bop e e2
+exprBoolCalcAlgebra :: ExprAlgebra Expr
+exprBoolCalcAlgebra n@(BinopExprF And e e2)
+    | e == LitB (False) || e2 == LitB (False) = LitB (False)
+    | e == LitB (True)                        = e2
+    | e2 == LitB (True)                       = e
+    | otherwise                               = embed n
+exprBoolCalcAlgebra n@(BinopExprF Or e e2)
+    | e == LitB (True) || e2 == LitB (True)   = LitB (True)
+    | e == LitB (False)                       = e2
+    | e2 == LitB (False)                      = e
+    | otherwise                               = embed n
+exprBoolCalcAlgebra n@(BinopExprF Implication e e2)
+    | e == LitB (False)                        = LitB (True)
+    | e2 == LitB (True)                        = LitB (True)
+    | e  == LitB (True) && e2 == LitB (False)  = LitB (False)
+    | e2 == LitB (False)                       = OpNeg e
+    | otherwise                                = embed n
+exprBoolCalcAlgebra n@(CondF c e e2)
+    | c == LitB True  = e
+    | c == LitB False = e2
+    | otherwise       = embed n
+exprBoolCalcAlgebra n@(OpNegF e)
+    | e == LitB True  = LitB False
+    | e == LitB False = LitB True
+    | otherwise       = embed n
 
-    cond (LitB True)  e _    = e
-    cond (LitB False) _ e2   = e2
-    cond g              e e2 = Cond g e e2
-    opneg (LitB True)        = LitB False
-    opneg (LitB False)       = LitB True
-    opneg e                  = OpNeg e
+exprBoolCalcAlgebra n = embed n
+
+pattern I :: Int -> Expr
+pattern I n = LitI n                    -- implicitly bidirectional
+
+pattern B :: Bool -> Expr
+pattern B b = LitB b
+
+infixl 6 :+
+infixl 6 :-
+infixl 7 :*
+infixl 7 :/
+infix  5 :>=
+infix  5 :<=
+infix  5 :>
+infix  5 :<
+infix  5 :==
+
+pattern (:+) :: Expr -> Expr -> Expr
+pattern e :+ e2 <- BinopExpr Plus e e2 where
+  e :+ e2 = BinopExpr Plus e e2
+
+pattern (:-) :: Expr -> Expr -> Expr
+pattern e :- e2 <- BinopExpr Minus e e2 where
+  e :- e2 = BinopExpr Minus e e2
+
+pattern (:*) :: Expr -> Expr -> Expr
+pattern e :* e2 <- BinopExpr Multiply e e2 where
+  e :* e2 = BinopExpr Multiply e e2
+
+pattern (:/) :: Expr -> Expr -> Expr
+pattern e :/ e2 <- BinopExpr Divide e e2 where
+  e :/ e2 = BinopExpr Divide e e2
+
+pattern (:<=) :: Expr -> Expr -> Expr
+pattern e :<= e2 <- BinopExpr LessThanEqual e e2 where
+  e :<= e2 = BinopExpr LessThanEqual e e2
+
+pattern (:>=) :: Expr -> Expr -> Expr
+pattern e :>= e2 <- BinopExpr GreaterThanEqual e e2 where
+  e :>= e2 = BinopExpr GreaterThanEqual e e2
+
+pattern (:<) :: Expr -> Expr -> Expr
+pattern e :< e2 <- BinopExpr LessThan e e2 where
+  e :< e2 = BinopExpr LessThan e e2
+
+pattern (:>) :: Expr -> Expr -> Expr
+pattern e :> e2 <- BinopExpr GreaterThan e e2 where
+  e :> e2 = BinopExpr GreaterThan e e2
+
+pattern (:==) :: Expr -> Expr -> Expr
+pattern e :== e2 <- BinopExpr Equal e e2 where
+  e :== e2 = BinopExpr Equal e e2
+
+pattern (:||) :: Expr -> Expr -> Expr
+pattern e :|| e2 <- BinopExpr Or e e2 where
+  e :|| e2 = BinopExpr Or e e2
+
+pattern (:&&) :: Expr -> Expr -> Expr
+pattern e :&& e2 <- BinopExpr And e e2 where
+  e :&& e2 = BinopExpr And e e2
 
 exprIntCalcAlgebra :: ExprAlgebra Expr
-exprIntCalcAlgebra = (
-    \s        -> Var s,
-    \i        -> LitI i,
-    \b        -> LitB b,
-                 LitNull,
-    \e e2     -> ArrayElem e e2,
-    \e        -> OpNeg e,
-    \bop e e2 -> calc bop e e2,
-    \s e      -> Forall s e,
-    \s e      -> Exists s e,
-    \e        -> SizeOf e,
-    \e e2 e3  -> RepBy e e2 e3,
-    \e e2 e3  -> Cond  e e2 e3,
-    \e        -> NewStore e,
-    \s        -> Dereference s )
+exprIntCalcAlgebra (BinopExprF bop' e' e2') = calc bop' e' e2'
   where
-    calc Plus     (LitI a) (LitI b)                       = LitI (a + b)
-    calc Plus     ((BinopExpr Plus  e (LitI a))) (LitI b) = BinopExpr Plus e (LitI (a + b))
-    calc Plus     ((BinopExpr Minus e (LitI a))) (LitI b) | a == b    = e
-                                                        | a > b     = BinopExpr Minus e (LitI (a - b))
-                                                        | otherwise = BinopExpr Plus  e (LitI (b - a))
+    calc :: BinOp -> Expr -> Expr -> Expr
 
-    calc Minus    (LitI a) (LitI b)                       = LitI (a - b)
-    calc Minus    ((BinopExpr Minus e (LitI a))) (LitI b) = BinopExpr Minus e (LitI (a + b))
-    calc Minus    ((BinopExpr Plus  e (LitI a))) (LitI b) | a == b    = e
-                                                        | a < b     = BinopExpr Minus e (LitI (b - a))
-                                                        | otherwise = BinopExpr Plus  e (LitI (a - b))
+    calc Plus     (I a)      (I 0) = I a
+    calc Plus     (I 0)      (I b) = I b
+    calc Plus     (I a)      (I b) = I (a + b)
+    calc Plus     (e :+ I a) (I b) = e :+ I (a + b)
+    calc Plus     (I a :+ e) (I b) = e :+ I (a + b)
+    calc Plus     (e :- I a) (I b)
+        | a == b    = e
+        | a >  b    = e :- I (a - b)
+        | otherwise = e :+ I (b - a)
 
-    calc Multiply (LitI a) (LitI b)                          = LitI (a * b)
-    calc Multiply ((BinopExpr Multiply (LitI a) e)) (LitI b) = BinopExpr Multiply e (LitI (a * b))
-    calc Multiply ((BinopExpr Multiply e (LitI a))) (LitI b) = BinopExpr Multiply e (LitI (a * b))
+    calc Minus    (I a)      (I 0) = I a
+    calc Minus    (I 0)      (I a) = I (-a)
+    calc Minus    (I a)      (I b) = I (a - b)
+    calc Minus    (e :- I a) (I b) = e :- I (a + b)
+    calc Minus    (I a :- e) (I b) = I (a - b) :- e
+    calc Minus    (e :+ I a) (I b)
+        | a == b    = e
+        | a <  b    = e :- I (b - a)
+        | otherwise = e :+ I (a - b)
 
-    calc Divide   (LitI a) (LitI b)                          = LitI (div a b)
-    calc Divide   ((BinopExpr Divide   e (LitI a))) (LitI b) = BinopExpr Divide   e (LitI (a * b))
-    calc Divide   ((BinopExpr Divide   (LitI a) e)) (LitI b) = BinopExpr Divide   e (LitI (a * b))
+    calc Multiply (I _)      (I 0) = I 0
+    calc Multiply (I a)      (I 1) = I a
+    calc Multiply (I 0)      (I _) = I 0
+    calc Multiply (I 1)      (I b) = I b
+    calc Multiply (I a)      (I b) = I (a * b)
+    calc Multiply (I a :* e) (I b) = e :* I (a * b)
+    calc Multiply (e :* I a) (I b) = e :* I (a * b)
 
-    calc LessThan         (LitI a) (LitI b) = LitB (a < b)
-    calc LessThanEqual    (LitI a) (LitI b) = LitB (a <= b)
-    calc GreaterThan      (LitI a) (LitI b) = LitB (a > b)
-    calc GreaterThanEqual (LitI a) (LitI b) = LitB (a >= b)
+    calc Divide   (I a)      (I 1) = I a
+    calc Divide   (I 0)      (I _) = I 0
+    calc Divide   (I a)      (I b) = I (div a b)
+    calc Divide   (e :/ I a) (I b) = e :/ I (a * b)
+    calc Divide   (I a :/ e) (I b) = I (div a b) :/ e
+
+    calc LessThan         (I a) (I b) = B (a <  b)
+    calc LessThanEqual    (I a) (I b) = B (a <= b)
 
     calc bop e e2 = BinopExpr bop e e2
 
+exprIntCalcAlgebra n = embed n
+
+exprFlipAlgebra :: ExprAlgebra Expr
+exprFlipAlgebra (BinopExprF GreaterThanEqual e e2) = e2 :<= e
+exprFlipAlgebra (BinopExprF GreaterThan e e2) = e2 :< e
+exprFlipAlgebra n = embed n
+
+exprDedupAlgebra :: ExprAlgebra Expr
+exprDedupAlgebra (BinopExprF And e e2) | e == e2 = e
+exprDedupAlgebra (BinopExprF Or e e2)  | e == e2 = e
+exprDedupAlgebra n = embed n
+
 exprRewriteAlgebra :: ExprAlgebra Expr
-exprRewriteAlgebra = (
-    \s        -> Var s,
-    \i        -> LitI i,
-    \b        -> LitB b,
-                 LitNull,
-    \e e2     -> ArrayElem e e2,
-    removeDoubleNeg,
-    rewriteImplication,
-    \s e      -> Forall s e,
-    \s e      -> Exists s e,
-    \e        -> SizeOf e,
-    \e e2 e3  -> RepBy e e2 e3,
-    \e e2 e3  -> Cond  e e2 e3,
-    \e        -> NewStore e,
-    \s        -> Dereference s )
-    where
-      rewriteImplication Implication e e2   = opOr (OpNeg e) (e2)
-      rewriteImplication bop           e e2 = BinopExpr bop e e2
-      removeDoubleNeg (OpNeg e)             = e
-      removeDoubleNeg e                     = OpNeg e
+exprRewriteAlgebra (BinopExprF Implication e e2) = opOr (OpNeg e) (e2)
+exprRewriteAlgebra (OpNegF (OpNeg e))            = e
+exprRewriteAlgebra n                             = embed n
 
 optimizeUntilIdempotence :: Expr -> Expr
 optimizeUntilIdempotence exprs = let
     optimized = foldr1 (.) (map foldExpr [
+        exprRewriteAlgebra,
+        exprDedupAlgebra,
         exprVerbEqAlgebra,
-        exprTautologyAlgebra,
-        exprIntCalcAlgebra,
-        exprRewriteAlgebra
+        exprBoolCalcAlgebra,
+        exprIntCalcAlgebra
      ]) exprs;
  in if optimized == exprs then exprs else optimizeUntilIdempotence optimized
 
@@ -152,7 +185,7 @@ optimizeTrace :: (Expr, Int) -> IO ()
 optimizeTrace (exprs, index) = let
     optimized = foldr1 (.) (map foldExpr [
         exprVerbEqAlgebra,
-        exprTautologyAlgebra,
+        exprBoolCalcAlgebra,
         exprIntCalcAlgebra,
         exprRewriteAlgebra
      ]) exprs;
