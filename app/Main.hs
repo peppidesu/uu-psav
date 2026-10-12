@@ -17,14 +17,14 @@ import PrettyPrint (ppPathTree2String)
 test :: IO [Expr]
 test = do
     Right(prog) <- parseGCLfile "./examples/benchmark/bsort.gcl"
-    let paths = unrollUntil 30 $ G.stmt prog
-    return $ concatMap (flip wlpAlwaysFeasibilityCheck []) paths
+    let paths = unrollUntil 50 $ G.stmt prog
+    return $ concatMap (map optimize . flip wlpAlwaysFeasibilityCheck []) paths
 
 main :: IO ()
 main = let
  in do
     exprs <- test
-    let optimized = map optimizeUntilIdempotence exprs
-    _ <- mapM (putStrLn . show . G.PP.ppExpr) optimized
+    let optimized = map optimize exprs
+    _ <- mapM (putStrLn . (++ "\n") . show . G.PP.ppExpr) optimized
     -- _ <- mapM (optimizeTrace) (zip exprs [0..])
     return ()
