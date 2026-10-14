@@ -13,16 +13,20 @@ import Data.Maybe (isJust)
 -- | Takes the PathTree to calculate the wlp for, and a list of statements that is used in the recursion that should start empty.
 -- Check the feasibility for every assume statement it encounters, and stops wlp calculation for anything infeasible.
 wlpAlwaysFeasibilityCheck ::  VarTypes -> [Stmt] -> PathTree -> [Expr]
-wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) []) | check types e prefix = [wlp' (Assume e) (LitB True)  ]
-                                                            | otherwise      = []
-wlpAlwaysFeasibilityCheck _ _ (Node x []) = [wlp' x (LitB True)] -- prefix does not need to be changed since it is not passed anywhere
+wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) [])
+    | check types e prefix = [wlp' (Assume e) (LitB True)  ]
+    | otherwise            = []
+wlpAlwaysFeasibilityCheck _     _      (Node x [])
+    = [wlp' x (LitB True)] -- prefix does not need to be changed since it is not passed anywhere
 wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) ts)
     | check types e prefix = map (wlp' (Assume e)) (concat $ map (wlpAlwaysFeasibilityCheck types ((Assume e) : prefix)) ts)
     | otherwise            = []
 
 -- All asserts should be ignored for feasibility checking.
-wlpAlwaysFeasibilityCheck types prefix (Node (Assert e) ts) = map (wlp' (Assert e)) (concat $ map (wlpAlwaysFeasibilityCheck types prefix      ) ts)
-wlpAlwaysFeasibilityCheck types prefix (Node x ts)          = map (wlp' x)          (concat $ map (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)
+wlpAlwaysFeasibilityCheck types prefix (Node (Assert e) ts)
+    = map (wlp' (Assert e)) (concat $ map (wlpAlwaysFeasibilityCheck types prefix      ) ts)
+wlpAlwaysFeasibilityCheck types prefix (Node x ts)
+    = map (wlp' x)          (concat $ map (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)
 
 -- | Checks if the program with the list of statements (which should be given in reverse), and the given post condition (which should not be
 --  included in the statement list) is feasible.
