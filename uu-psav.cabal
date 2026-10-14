@@ -72,6 +72,7 @@ executable uu-psav
                     , containers
                     , pretty
                     , z3
+                    , extra
                     , uu-psav
 
     -- Directories containing source files.
@@ -118,7 +119,9 @@ library
                   , PrettyPrint
                   , WLP
                   , Optimize
+                  , SMT
                   , Feasibility
+                  , ShadowElimination
 
    other-modules: Z3Conf
 
@@ -128,6 +131,8 @@ library
                    , pretty
                    , z3
                    , extra
+                   , transformers
+                   , mtl
                    , recursion-schemes
                    , lens
 
