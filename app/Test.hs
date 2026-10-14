@@ -13,7 +13,7 @@ import qualified GCLParser.PrettyPrint as G.PP
 import CLI
 import SMT
 import Data.List.Extra (firstJust)
-
+import qualified ShadowElimination as S
 
 
 
@@ -31,7 +31,8 @@ run (CLI {
                    conf,
                    gcl,
                    showHelp}   ) = do
-    let Right(prog) = head gcl
+    let Right(prog') = head gcl
+    let (prog,(_,_,renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
     putStrLn $ "varTypes = " ++ show varTypes
