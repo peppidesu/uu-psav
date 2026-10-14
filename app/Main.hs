@@ -1,37 +1,43 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Main (main) where
 
+import CLI (getPlain, getInputs, usage, Options, CLIGeneric(..), PlainData)
 import GCLParser.Parser
-
-import GCLParser.GCLDatatype (Expr)
-
-import qualified GCLParser.GCLDatatype as G
-import qualified GCLParser.PrettyPrint as G.PP
-
-import Control.Monad
-import WLP
 import Unroll (unrollUntil)
-import Feasibility (wlpAlwaysFeasibilityCheck)
+import qualified GCLParser.GCLDatatype as G
 import Optimize
+import Feasibility
+import qualified GCLParser.PrettyPrint as G.PP
+import CLI
 import SMT
-import PrettyPrint (ppPathTree2String)
-import qualified Data.Map.Strict as Map
 import Data.List.Extra (firstJust)
+import qualified ShadowElimination as S
 
-test :: IO (VarTypes, [Expr])
-test = do
-    Right(prog) <- parseGCLfile "./examples/benchmark/bsort.gcl"
-    let paths = unrollUntil 50 $ G.stmt prog
+
+
+
+
+main = do
+     inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
+     if inputs.showHelp
+     then putStrLn usage
+     else run (inputs)
+
+run :: PlainData -> IO ()
+run (CLI {
+                   plength,
+                   conf,
+                   gcl,
+                   showHelp}   ) = do
+    let Right(prog') = head gcl
+    let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
+    let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
-    putStrLn $ "varTypes = " ++ show varTypes
-    return $ (,) varTypes $ concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
-
-main :: IO ()
-main =
-  do (varTypes, exprs) <- test
-     let optimized = map optimize exprs
-     maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) (map G.OpNeg optimized)
-     case maybeCounterExample of
-       Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
-       Nothing             -> putStrLn $ "Up to length K = 30, all paths are valid"
-     -- _ <- mapM (putStrLn . (++ "\n") . show . G.PP.ppExpr) optimized
-     -- _ <- mapM (optimizeTrace) (zip exprs [0..])
+    let exprs = concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
+    let optimized = map optimize exprs
+    maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) (map G.OpNeg optimized)
+    case maybeCounterExample of
+      Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
+      Nothing             -> putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")
