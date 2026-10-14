@@ -22,9 +22,14 @@ wlpConj' e          q = wlp'  e q
 
 -- | Checks if the program with the list of statements (which should be given in reverse), and the given post condition (which should not be
 --  included in the statement list) is feasible.
-check :: VarTypes -> Expr -> [Stmt] -> IO Bool
-check types e ts = simpleCheck . optimize $ wlpConj ts e
+check :: VarTypes -> Expr -> [Stmt] -> Bool
+check types e ts = trace (unlines [
+        "Feasibility: " ++ show predicate,
+        "   = " ++ show result
+    ]) result
     where
+    predicate = optimize $ wlpConj ts e
+    result = unsafePerformIO $ simpleCheck predicate
     simpleCheck (LitB False) = pure False
     simpleCheck expr = isJust <$> z3Check types expr
 
@@ -32,14 +37,14 @@ check types e ts = simpleCheck . optimize $ wlpConj ts e
 -- Check the feasibility for every assume statement it encounters, and stops wlp calculation for anything infeasible.
 wlpAlwaysFeasibilityCheck ::  VarTypes -> [Stmt] -> PathTree -> [Expr]
 wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) [])
-    | unsafePerformIO $ check types e prefix = [wlp' (Assume e) (LitB True)]
+    | check types e prefix = [wlp' (Assume e) (LitB True)]
     | otherwise                              = []
 wlpAlwaysFeasibilityCheck _     _      (Node x [])
     = [wlp' x (LitB True)]
 
 wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) ts)
-    | unsafePerformIO $ check types e prefix = map (wlp' (Assume e)) $ concatMap (wlpAlwaysFeasibilityCheck types ((Assume e) : prefix)) ts
+    | check types e prefix = map (wlp' (Assume e)) $ concatMap (wlpAlwaysFeasibilityCheck types ((Assume e) : prefix)) ts
     | otherwise                              = []
 
 wlpAlwaysFeasibilityCheck types prefix (Node x ts)
-    = map (wlp' x)          (concat $ map (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)
+    = map (wlp' x) (concatMap (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)

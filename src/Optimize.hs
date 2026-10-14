@@ -214,6 +214,20 @@ step = \case
     (e :+ I a) :< e2  | e == e2 -> Just $ B (a < 0)
     (e :+ I a) :<= e2 | e == e2 -> Just $ B (a <= 0)
     (e :+ I a) :== e2 | e == e2 -> Just $ B (a == 0)
+
+    (I a :<= e1) :&& (I b :<  e2) | e1 == e2 -> Just $ I (max (a - 1) b) :< e1
+    (I a :<  e1) :&& (I b :<= e2) | e1 == e2 -> Just $ I (max a (b - 1)) :< e1
+    (I a :<= e1) :|| (I b :<  e2) | e1 == e2 -> Just $ I (min (a - 1) b) :< e1
+    (I a :<  e1) :|| (I b :<= e2) | e1 == e2 -> Just $ I (min a (b - 1)) :< e1
+
+    (I a :<  e1) :&& (e2 :<  I b) | e1 == e2 && a + 1 >= b -> Just $ B False -- 4 < x && x < 5 is already impossible, but 3 < x && x < 5 is fine (x = 4)
+    (I a :<= e1) :&& (e2 :<  I b) | e1 == e2 && a >= b     -> Just $ B False -- 4 <=x && x < 5 is possible, but 5 <= x && x < 5 isn't
+    (I a :<  e1) :&& (e2 :<= I b) | e1 == e2 && a >= b     -> Just $ B False -- 4 < x && x <=5 is fine, 5 < x && x <= 5 is not
+    (I a :<= e1) :&& (e2 :<= I b) | e1 == e2 && a > b      -> Just $ B False -- 4 <=x && x <=5 is fine, 4 <=x && x <= 4 is as well
+    (I a :<  e1) :|| (e2 :<  I b) | e1 == e2 && a < b      -> Just $ B True  -- x > 3 || x < 4 is true for all x
+    (I a :<= e1) :|| (e2 :<  I b) | e1 == e2 && a <= b     -> Just $ B True  -- x >= 4 || x < 4 is true for all x
+    (I a :<  e1) :|| (e2 :<= I b) | e1 == e2 && a <= b     -> Just $ B True  -- x > 4 || x <= 4 is true for all x
+    (I a :<= e1) :|| (e2 :<= I b) | e1 == e2 && a - 1 <= b -> Just $ B True  -- x >= 6 || x <= 5 is true for all x
     ---------------------------------------------------------------------------
 
     -- Integer constant folding -----------------------------------------------
