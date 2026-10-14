@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo -e "File: $2\n\n"; cat "$2"; echo -e "\n\n"; echo -e "Running the wlp:\n\n";  cabal run 'test' -- -K $1 -f "$2" 

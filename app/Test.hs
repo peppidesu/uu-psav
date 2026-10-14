@@ -32,15 +32,13 @@ run (CLI {
                    gcl,
                    showHelp}   ) = do
     let Right(prog') = head gcl
-    let (prog,(_,_,renamingRecovery)) = S.shadowElim prog'
+    let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
     putStrLn $ "varTypes = " ++ show varTypes
     let exprs = concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
     let optimized = map optimize exprs
-    maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) optimized
+    maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) (map G.OpNeg optimized)
     case maybeCounterExample of
       Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
       Nothing             -> putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")
-
-
