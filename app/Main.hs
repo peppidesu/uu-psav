@@ -14,6 +14,7 @@ import CLI
 import SMT
 import Data.List.Extra (firstJust)
 import qualified ShadowElimination as S
+import Control.Monad.Extra (firstJustM)
 
 
 
@@ -37,7 +38,7 @@ run (CLI {
     let varTypes = (getTypes prog)
     let exprs = concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
     let optimized = map optimize exprs
-    maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) (map G.OpNeg optimized)
+    maybeCounterExample <- firstJustM (z3Check varTypes . G.OpNeg) optimized
     case maybeCounterExample of
       Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
       Nothing             -> putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")

@@ -2,11 +2,6 @@
 module WLP where
 import Types
 import GCLParser.GCLDatatype (Expr(..), BinOp (..), opAnd, opImplication)
-import Data.Tree (Tree(..))
-
-wlp :: PathTree -> [Expr]
-wlp (Node x []) = [wlp' x (LitB True)]
-wlp (Node x ts) = map (wlp' x) (concat $ map wlp ts)
 
 wlp' :: Stmt -> Expr -> Expr
 wlp'  Skip            = id
