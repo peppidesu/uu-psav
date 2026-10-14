@@ -41,6 +41,6 @@ run (CLI {
     maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) optimized
     case maybeCounterExample of
       Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
-      Nothing             -> putStrLn $ "Up to length K = 30, all paths are valid"
+      Nothing             -> putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")
 
 
