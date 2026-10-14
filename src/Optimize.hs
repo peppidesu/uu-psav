@@ -99,8 +99,7 @@ mkAnd []       = B True
 mkAnd [e]      = e
 mkAnd (e : es) = e :&& mkAnd es
 
--- | Set-level normalisation of one maximal AND/OR chain:
---   annihilator, unit removal, dedup, absorption.
+-- | Set-level normalisation of one maximal AND/OR chain
 normChain :: Expr -> Maybe Expr
 normChain e = case e of
   (_ :|| _) -> go (B True)  (B False) mkOr  orView  absorbOr  e
@@ -108,11 +107,14 @@ normChain e = case e of
   _         -> Nothing
   where
     go ann unit mk view absorb x
-      | ann `elem` xs = Just ann          -- p || true  = true
-      | y == x        = Nothing           -- already normal here
-      | otherwise     = Just y
+      | ann `elem` xs = Just ann          -- annihilator present; x -> ann
+      | y == x        = Nothing           -- x was already normal; report no change
+      | otherwise     = Just y            -- x -> y
       where xs = view x
-            y  = mk $ absorb $ nub $ filter (/= unit) xs
+            y  = mk                  -- reconstruct tree
+               $ absorb              -- apply absorption
+               $ nub                 -- remove duplicate terms
+               $ filter (/= unit) xs -- remove units
 
 -- | Drop each disjunct that another disjunct implies by being its conjunct.
 absorbOr :: [Expr] -> [Expr]
@@ -134,7 +136,9 @@ disjunctOf _ _ = False
 
 truth :: Expr -> Maybe Bool
 truth = \case
-  LitB b                        -> Just b
+  LitB b                        -> Just b        -- used for recursive calls of `truth`
+
+  -- comparison of literals
   I a :<  I b                   -> Just $ a <  b
   I a :<= I b                   -> Just $ a <= b
   I a :== I b                   -> Just $ a == b
@@ -150,15 +154,21 @@ truth = \case
   OpNeg e                       -> not  <$> truth e
   e :&& e2                      -> (&&) <$> truth e <*> truth e2
   e :|| e2                      -> (||) <$> truth e <*> truth e2
+  Forall _ e                    -> truth e
+  Exists _ e                    -> truth e
+
   _                             -> Nothing
 
 -- | One rewrite step. 'Nothing' means \"already normal at this node\".
 step :: Expr -> Maybe Expr
 step = \case
+    -- trivial truths
     e | Just b <- truth e, e /= B b -> Just (B b)
 
+    -- implication definition
     BinopExpr Implication e e2 -> Just (OpNeg e :|| e2)
 
+    -- negation laws ----------------------------------------------------------
     OpNeg (OpNeg e)        -> Just e
     OpNeg (e :|| e2)       -> Just $ OpNeg e :&& OpNeg e2
     OpNeg (e :&& e2)       -> Just $ OpNeg e :|| OpNeg e2
@@ -166,19 +176,23 @@ step = \case
     OpNeg (Exists s e)     -> Just $ Forall s (OpNeg e)
     OpNeg (e :<= e2)       -> Just $ e2 :< e
     OpNeg (e :< e2)        -> Just $ e2 :<= e
-
     OpNeg (B True)      -> Just (B False)
     OpNeg (B False)     -> Just (B True)
+    ---------------------------------------------------------------------------
 
+    -- Swap comparison to always be < or <= -----------------------------------
     e :>= e2 -> Just (e2 :<= e)
     e :>  e2 -> Just (e2 :< e)
+    ---------------------------------------------------------------------------
 
+    -- conjunction / disjunction chain normalization --------------------------
     e | Just e' <- normChain e -> Just e'
+    ---------------------------------------------------------------------------
 
+    -- trivial conditions -----------------------------------------------------
     Cond c e _  | c == B True   -> Just e
     Cond c _ e2 | c == B False  -> Just e2
-    Forall _ (B b)              -> Just $ B b
-    Exists _ (B b)              -> Just $ B b
+    ---------------------------------------------------------------------------
 
     -- inclusion/exclusion principle ------------------------------------------
     (e :< e2)  :|| (e3 :<= e4)  | e2 == e3 && e == e4  -> Just $ B True
@@ -202,6 +216,7 @@ step = \case
     (e :+ I a) :== e2 | e == e2 -> Just $ B (a == 0)
     ---------------------------------------------------------------------------
 
+    -- Integer constant folding -----------------------------------------------
     (e :+ I k) :<  I c -> Just (e :<  I (c - k))
     (e :- I k) :<  I c -> Just (e :<  I (c + k))
     (e :+ I k) :<= I c -> Just (e :<= I (c - k))
@@ -214,7 +229,6 @@ step = \case
     I c :<= (e :- I k) -> Just (I (c + k) :<= e)
     I c :== (e :+ I k) -> Just (I (c - k) :== e)
     I c :== (e :- I k) -> Just (I (c + k) :== e)
-
 
     (I a) :+ (I 0)      -> Just $ I a
     (I 0) :+ (I b)      -> Just $ I b
@@ -246,12 +260,13 @@ step = \case
 
     (I a) :/ (I 1)      -> Just $ I a
     (I 0) :/ (I _)      -> Just $ I 0
-    (I a) :/ (I b)      | b /= 0 -> Just $ I (div a b)   -- see caveat 4
+    (I a) :/ (I b)      | b /= 0 -> Just $ I (div a b)
     (e :/ I a) :/ (I b) | b /= 0 -> Just $ e :/ I (a * b)
     (I a :/ e) :/ (I b) | b /= 0 -> Just $ I (div a b) :/ e
 
     (I a) :< (I b)      -> Just $ B (a <  b)
     (I a) :<= (I b)     -> Just $ B (a <= b)
+    ---------------------------------------------------------------------------
 
     Parens e -> Just e  -- remove parens as they are just parser glue and the AST shape ensures correct evaluation order
 

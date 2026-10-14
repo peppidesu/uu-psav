@@ -4,7 +4,7 @@ module SMT (
 Assignments,
 z3Check,
 getTypes,
-Types,
+Types(..),
 VarTypes
 )
 where
@@ -120,7 +120,7 @@ myMkVar str types = do   map <- get
                                          (put $ Map.insert str astVar map)
                                          return astVar
                            Just astVar -> return astVar
-                          
+
 
 myMkVar' :: MonadZ3 z3 => String -> Types -> z3 AST
 myMkVar' str t = do symbol <- mkStringSymbol str
@@ -144,7 +144,7 @@ myMkArrSize str = do map <- get
                                      lift (mkLe zero arrSizeVar >>= assert)
                                      return arrSizeVar
                        Just ast  ->  return ast
-                          
+
 
 myMkBinOp :: MonadZ3 z3 => G.BinOp -> AST -> AST -> StateT VarsToASTs z3 AST
 myMkBinOp binOp a b = lift $ cast binOp
@@ -191,7 +191,7 @@ z3Check' types expr = do (ast, map) <- runStateT (smtAST types expr) Map.empty
                          (_, maybeModel) <- getModel
                          case maybeModel of
                           Nothing -> return Nothing
-                          Just model -> Just <$> getAssignments model map 
+                          Just model -> Just <$> getAssignments model map
 
 
 -- Create the z3 AST analogue of the Expression given to check for satisfyibility.
@@ -241,8 +241,3 @@ smtAST map =
       G.NewStore expr    -> undefined
 
       G.Dereference expr -> undefined
-      
-      
-                     
-                    
-  
