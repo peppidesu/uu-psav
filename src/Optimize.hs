@@ -103,7 +103,7 @@ mkAnd (e : es) = e :&& mkAnd es
 normChain :: Expr -> Maybe Expr
 normChain e = case e of
   (_ :|| _) -> go (B True)  (B False) mkOr  orView  absorbOr  e
-  (_ :&& _) -> go (B False) (B True)  mkAnd andView absorbAnd e
+  (_ :&& _) -> go (B False) (B True)  mkAnd (collapseLowerBounds . andView) absorbAnd e
   _         -> Nothing
   where
     go ann unit mk view absorb x
@@ -133,6 +133,30 @@ conjunctOf _ _ = False
 disjunctOf :: Expr -> Expr -> Bool
 disjunctOf c d@(_ :|| _) = c `elem` orView d
 disjunctOf _ _ = False
+
+mergeLowerBound :: Expr -> Expr -> Maybe Expr
+mergeLowerBound x y = case (x, y) of
+  (I a :<  e1, I b :<  e2) | e1 == e2 -> Just $ if a >= b     then x else y
+  (I a :<= e1, I b :<= e2) | e1 == e2 -> Just $ if a >= b     then x else y
+  (I a :<  e1, I b :<= e2) | e1 == e2 -> Just $ if a + 1 >= b then x else y
+  (I a :<= e1, I b :<  e2) | e1 == e2 -> Just $ if b + 1 >= a then y else x
+  (e1 :<  I a, e2 :<  I b) | e1 == e2 -> Just $ if a <= b     then x else y
+  (e1 :<= I a, e2 :<= I b) | e1 == e2 -> Just $ if a <= b     then x else y
+  (e1 :<  I a, e2 :<= I b) | e1 == e2 -> Just $ if a <= b + 1 then x else y
+  (e1 :<= I a, e2 :<  I b) | e1 == e2 -> Just $ if b <= a + 1 then y else x
+  _                                   -> Nothing
+
+collapseLowerBounds :: [Expr] -> [Expr]
+collapseLowerBounds = foldl' ins []
+  where
+    ins acc c = case tryMerge c acc of
+      Just acc' -> acc'
+      Nothing   -> acc ++ [c]
+    tryMerge _ [] = Nothing
+    tryMerge c (a : as)
+      | Just a' <- mergeLowerBound c a = Just (a' : as)
+      | otherwise                      = (a :) <$> tryMerge c as
+
 
 truth :: Expr -> Maybe Bool
 truth = \case
@@ -215,9 +239,12 @@ step = \case
     (e :+ I a) :<= e2 | e == e2 -> Just $ B (a <= 0)
     (e :+ I a) :== e2 | e == e2 -> Just $ B (a == 0)
 
+    (e1 :- I a) :== (e2 :- I b) | e1 == e2 -> Just $ B $ a == b
+    (e1 :+ I a) :== (e2 :+ I b) | e1 == e2 -> Just $ B $ a == b
+
     (I a :<= e1) :&& (I b :<  e2) | e1 == e2 -> Just $ I (max (a - 1) b) :< e1
-    (I a :<  e1) :&& (I b :<= e2) | e1 == e2 -> Just $ I (max a (b - 1)) :< e1
     (I a :<= e1) :|| (I b :<  e2) | e1 == e2 -> Just $ I (min (a - 1) b) :< e1
+    (I a :<  e1) :&& (I b :<= e2) | e1 == e2 -> Just $ I (max a (b - 1)) :< e1
     (I a :<  e1) :|| (I b :<= e2) | e1 == e2 -> Just $ I (min a (b - 1)) :< e1
 
     (I a :<  e1) :&& (e2 :<  I b) | e1 == e2 && a + 1 >= b -> Just $ B False -- 4 < x && x < 5 is already impossible, but 3 < x && x < 5 is fine (x = 4)
@@ -228,6 +255,10 @@ step = \case
     (I a :<= e1) :|| (e2 :<  I b) | e1 == e2 && a <= b     -> Just $ B True  -- x >= 4 || x < 4 is true for all x
     (I a :<  e1) :|| (e2 :<= I b) | e1 == e2 && a <= b     -> Just $ B True  -- x > 4 || x <= 4 is true for all x
     (I a :<= e1) :|| (e2 :<= I b) | e1 == e2 && a - 1 <= b -> Just $ B True  -- x >= 6 || x <= 5 is true for all x
+
+    e1 :< e2 | e1 == e2 -> Just $ B False
+    e1 :<= e2 | e1 == e2 -> Just $ B True
+    e1 :== e2 | e1 == e2 -> Just $ B True
     ---------------------------------------------------------------------------
 
     -- Integer constant folding -----------------------------------------------

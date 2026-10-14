@@ -16,19 +16,19 @@ divByN(x:int | divisible:bool) {
     while k<=x && ~divisible do {
       //assert divisible
       //       =
-      //       (exists m:: 0<m && m<k && m*N = x)  ;
+      //       (exists m:: 0<m && m<k && m*10 = x)  ;
       var i:int {
          i := 0 ;
-         while i<N do { // deliberate bug ... should i<N. Change: removing the bug.
+         while i<10 do { // deliberate bug ... should i<N. Change: removing the bug.
             i := i+1
-         } ; // so, i = N
-         divisible := i*k = x     // in other words, d := (N*k = x)
+         } ; // so, i = 10
+         divisible := i*k = x     // in other words, d := (10*k = x)
       } ;
       k := k+1
     }
   } ;
-  // assert divisible = (exists m:: 0<m && m<=x && m*N = x)
+  // assert divisible = (exists m:: 0<m && m<=x && m*10 = x)
   // deliberately invalid:
-  assert divisible = (exists m:: 0<m && m<=x && m*N = (x+1)*N)
+  assert divisible = (exists m:: 0<m && m<=x && m*10 = (x+1)*10)
 
 }

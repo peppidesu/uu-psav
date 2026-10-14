@@ -1,6 +1,6 @@
 module Feasibility where
 import Types
-import GCLParser.GCLDatatype (Expr(..), opAnd)
+import GCLParser.GCLDatatype (Expr(..), opAnd, BinOp (LessThan))
 import Data.Tree (Tree(..))
 import WLP(wlp')
 import Debug.Trace
@@ -25,12 +25,17 @@ wlpConj' e          q = wlp'  e q
 check :: VarTypes -> Expr -> [Stmt] -> Bool
 check types e ts = trace (unlines [
         "Feasibility: " ++ show predicate,
+        -- "Feasibility (unsimplified): " ++ show (wlpConj ts e),
         "   = " ++ show result
     ]) result
     where
     predicate = optimize $ wlpConj ts e
     result = unsafePerformIO $ simpleCheck predicate
-    simpleCheck (LitB False) = pure False
+
+    -- soundness | result /= (unsafePerformIO $ simpleCheck $ wlpConj ts e) = error ""
+    --           | otherwise = ()
+
+    simpleCheck (LitB a) = pure a
     simpleCheck expr = isJust <$> z3Check types expr
 
 -- | Takes the PathTree to calculate the wlp for, and a list of statements that is used in the recursion that should start empty.
