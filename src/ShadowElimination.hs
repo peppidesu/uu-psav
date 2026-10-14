@@ -9,10 +9,10 @@ import qualified Data.Map as Map
 
 import qualified Types as T
 
--- When a string key is in the map, that means that a var with that name was found
--- once in the program. If the value corresponding to that string is the empty list,
+-- When a string key is in the map, that means that a var binding with that name was found
+-- before in the program. If the value corresponding to that string is the empty list,
 -- it means that in the current scope during the parsing, there are no variables with the same name,
--- meaning no variable shadowing occurs.
+-- meaning no variable shadowing occurs. In other words, no renaming will be necessary
 -- If the list is non-empty, the strings in the list emulate a stack of all the renamed variables
 -- corresponding to the current var name
 type CurrentScopedVariableRenamings = Map.Map String [String]
@@ -22,6 +22,14 @@ type MapFromTempsToOriginalVarNames = Map.Map String String
 
 type S = (Int, CurrentScopedVariableRenamings, MapFromTempsToOriginalVarNames)
 type ModType a = a -> State S a
+
+-- getters
+fst3 :: (a,b,c) -> a
+fst3 (a,_,_) = a
+snd3 :: (a,b,c) -> b
+snd3 (_,b,_) = b
+thd3 :: (a,b,c) -> c
+thd3 (_,_,c) = c
 
 shadowElim :: G.Program -> (G.Program, S)
 shadowElim prog = runState (shadowElim' prog) ((1, Map.empty, Map.empty) :: S)
@@ -33,7 +41,7 @@ mkVar n = "_q" ++ show n
 -- | Found a variable which is not a declaration so just rename it
 replaceVar :: ModType String
 replaceVar str = do
-    (_, idsToTemps, _) <- get
+    idsToTemps <- gets snd3
     let replStr = case Map.lookup str idsToTemps of
                         Just (x:_) -> x
                         Just [] -> str
@@ -67,10 +75,8 @@ renameDecls l = mapM renameDecl l
 
 
 renameExpr :: ModType G.Expr
-renameExpr (G.Var s) = do (bool, newStr) <- mkFreshVar s
-                          if not bool then error $ "Var \"" ++ s ++ "\" not in scope"
-                                      else return ()
-                          return $ G.Var newStr
+renameExpr (G.Var s) = G.Var <$> replaceVar s
+
 renameExpr (G.LitI n) = return $ G.LitI n
 renameExpr (G.LitB b) = return $ G.LitB b
 renameExpr (G.LitNull) = return G.LitNull
