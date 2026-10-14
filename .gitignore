@@ -25,3 +25,12 @@ cabal.project.local~
 .ghc.environment.*
 gclparser/
 cfg/
+progressPresentation.fdb_latexmk
+progressPresentation.fls
+.gitignore
+progressPresentation.log
+progressPresentation.nav
+progressPresentation.out
+progressPresentation.snm
+progressPresentation.synctex.gz
+progressPresentation.toc

@@ -13,7 +13,7 @@
 \begin{itemize}
   \item Local variables
   % Have, but not being called
-  \item Lazily
+  \item Lazily unfolding
   % This is done lazily using a tree, so that we can stop unfolding when 
   % all children will be infeasible paths
   \item Removes while, if then else and seq
@@ -32,7 +32,6 @@
   \item Done by calculating the wlp of the prefix
   % We check feasibility by calculating the wlp of the prefix of the path
   % like in the project description. 
-  % INSTEAD OF
   \item Same simplification steps and calls to z3 as the wlp of an entire path
   % Then we use the same simplification steps and calls to z3.
   \item No heuristics yet
@@ -53,7 +52,7 @@
   \item Simplification function is called until the wlp remains the same 
   % We then simplify it by repeatedly calling our simplification function
   \item More improvements will be added
-  \item Z3
+  \item Z3 calls and conversion
 \end{itemize}
 \end{frame}
 
