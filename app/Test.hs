@@ -11,6 +11,8 @@ import Optimize
 import Feasibility
 import qualified GCLParser.PrettyPrint as G.PP
 import CLI
+import SMT
+import Data.List.Extra (firstJust)
 
 
 
@@ -31,10 +33,13 @@ run (CLI {
                    showHelp}   ) = do
     let Right(prog) = head gcl
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
-    let exprs = concatMap (map optimize . flip wlpAlwaysFeasibilityCheck []) paths
+    let varTypes = (getTypes prog)
+    putStrLn $ "varTypes = " ++ show varTypes
+    let exprs = concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
     let optimized = map optimize exprs
-    _ <- mapM (putStrLn . (++ "\n") . show . G.PP.ppExpr) optimized
-    -- _ <- mapM (optimizeTrace) (zip exprs [0..])
-    return ()
+    maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) optimized
+    case maybeCounterExample of
+      Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
+      Nothing             -> putStrLn $ "Up to length K = 30, all paths are valid"
 
 
