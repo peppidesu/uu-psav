@@ -187,7 +187,7 @@ z3Check types expr = evalZ3 $ z3Check' types expr
 -- if it returns Just, those are counterexamples. Otherwise, the expr is satisfiable
 z3Check' :: MonadZ3 z3 => VarTypes -> G.Expr -> z3 (Maybe Assignments)
 z3Check' types expr = do (ast, map) <- runStateT (smtAST types expr) Map.empty
-                         mkNot ast >>= assert
+                         ast >>= assert
                          (_, maybeModel) <- getModel
                          case maybeModel of
                           Nothing -> return Nothing
