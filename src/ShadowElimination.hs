@@ -74,6 +74,7 @@ renameDecls ::  [G.VarDeclaration] -> State S [(Bool, G.VarDeclaration)]
 renameDecls l = mapM renameDecl l
 
 
+
 renameExpr :: ModType G.Expr
 renameExpr (G.Var s) = G.Var <$> replaceVar s
 
@@ -152,10 +153,10 @@ renameStmt (G.TryCatch str stmt1 stmt2) = do (bool, newStr) <- mkFreshVar str
 shadowElim' :: ModType G.Program
 shadowElim' (G.Program name input output stmt) = do
    (bools, inputs) <- unzip <$> renameDecls input
-   stmt'   <- renameStmt stmt
    if (or bools) then error "Input declaration duplication" else return ()
    (bools', outputs) <- unzip <$> renameDecls output
-   if (not $ and bools') then error "Output variable is not defined" else return ()
+   if (or bools') then error "Output variable is defined previously even though they should be totally separate" else return ()
+   stmt'   <- renameStmt stmt
    return $ G.Program name  inputs  outputs stmt'
 
 
