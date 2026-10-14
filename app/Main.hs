@@ -12,19 +12,25 @@ import WLP
 import Unroll (unrollUntil)
 import Feasibility (wlpAlwaysFeasibilityCheck)
 import Optimize
+import SMT
 import PrettyPrint (ppPathTree2String)
+import Data.List.Extra (firstJust)
 
-test :: IO [Expr]
+test :: IO (VarTypes, [Expr])
 test = do
-    Right(prog) <- parseGCLfile "./examples/benchmark/bsort.gcl"
+    Right(prog) <- parseGCLfile "./examples/benchmark/memberOf.gcl"
     let paths = unrollUntil 50 $ G.stmt prog
-    return $ concatMap (map optimize . flip wlpAlwaysFeasibilityCheck []) paths
+    let varTypes = getTypes prog
+    putStrLn $ "varTypes = " ++ show varTypes
+    return $ (,) varTypes $ concatMap (map optimize . flip wlpAlwaysFeasibilityCheck []) paths
 
 main :: IO ()
-main = let
- in do
-    exprs <- test
-    let optimized = map optimize exprs
-    _ <- mapM (putStrLn . (++ "\n") . show . G.PP.ppExpr) optimized
-    -- _ <- mapM (optimizeTrace) (zip exprs [0..])
-    return ()
+main =
+  do (varTypes, exprs) <- test
+     let optimized = map optimize exprs
+     maybeCounterExample <- firstJust id <$> mapM (z3Check varTypes) optimized
+     case maybeCounterExample of
+       Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
+       Nothing             -> putStrLn $ "Up to length K = 50, all paths are valid"
+     -- _ <- mapM (putStrLn . (++ "\n") . show . G.PP.ppExpr) optimized
+     -- _ <- mapM (optimizeTrace) (zip exprs [0..])
