@@ -82,6 +82,33 @@ executable uu-psav
     -- Base language which the package is written in.
     default-language: Haskell2010
 
+executable benchmark
+    -- Import common warning flags.
+    import:           warnings
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          Benchmark.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:    deepseq ^>=1.5.0.0
+                    , base ^>=4.20.2.0
+                    , criterion
+                    , GCLparser
+                    , extra
+                    , uu-psav
+
+    -- Directories containing source files.
+    hs-source-dirs:   app
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
 
 library
    import:  warnings
@@ -98,7 +125,8 @@ library
 
    other-modules: Z3Conf
 
-   build-depends:    base ^>=4.20.2.0
+   build-depends:    deepseq ^>=1.5.0.0
+                   , base ^>=4.20.2.0
                    , GCLparser
                    , containers
                    , pretty

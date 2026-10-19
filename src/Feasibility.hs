@@ -23,11 +23,7 @@ wlpConj' e          q = wlp'  e q
 -- | Checks if the program with the list of statements (which should be given in reverse), and the given post condition (which should not be
 --  included in the statement list) is feasible.
 check :: VarTypes -> Expr -> [Stmt] -> Bool
-check types e ts = trace (unlines [
-        "Feasibility: " ++ show predicate,
-        -- "Feasibility (unsimplified): " ++ show (wlpConj ts e),
-        "   = " ++ show result
-    ]) result
+check types e ts = result
     where
     predicate = optimize $ wlpConj ts e
     result = unsafePerformIO $ simpleCheck predicate
