@@ -33,6 +33,7 @@
             pkgs.spin
             pkgs.pkg-config
             pkgs.prism-model-checker
+            pkgs.tinymist
           ];
         };
       });
