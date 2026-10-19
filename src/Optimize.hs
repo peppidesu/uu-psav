@@ -103,7 +103,7 @@ mkAnd (e : es) = e :&& mkAnd es
 normChain :: Expr -> Maybe Expr
 normChain e = case e of
   (_ :|| _) -> go (B True)  (B False) mkOr  orView  absorbOr  e
-  (_ :&& _) -> go (B False) (B True)  mkAnd (collapseLowerBounds . andView) absorbAnd e
+  (_ :&& _) -> go (B False) (B True)  mkAnd andView (collapseLowerBounds . absorbAnd) e
   _         -> Nothing
   where
     go ann unit mk view absorb x
