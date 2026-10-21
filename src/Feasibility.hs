@@ -39,27 +39,6 @@ check types e ts = do
         simpleCheck (LitB a) = pure a
         simpleCheck expr = liftIO (isJust <$> z3Check types expr)
 
--- | Takes the PathTree to calculate the wlp for, and a list of statements that is used in the recursion that should start empty.
--- Check the feasibility for every assume statement it encounters, and stops wlp calculation for anything infeasible.
-wlpAlwaysFeasibilityCheck ::  VarTypes -> [Stmt] -> PathTree -> AppM [Expr]
-wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) []) = do
-    ok <- check types e prefix
-    pure $ if ok
-        then [wlp' (Assume e) (LitB True)]
-        else []
-
-wlpAlwaysFeasibilityCheck _     _      (Node x [])
-    = pure [wlp' x (LitB True)]
-
-wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) ts) = do
-    ok <- check types e prefix
-    if ok
-        then (map (wlp' (Assume e)) <$> concatMapM (wlpAlwaysFeasibilityCheck types ((Assume e) : prefix)) ts)
-        else pure []
-
-wlpAlwaysFeasibilityCheck types prefix (Node x ts)
-    = map (wlp' x) <$> (concatMapM (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)
-
 findCounterExample :: VarTypes -> PathTree -> AppM (Maybe Expr)
 findCounterExample types = go [] id
     where

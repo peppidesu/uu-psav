@@ -23,11 +23,11 @@ main :: IO ()
 main = do
      inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
      let config = Config {
-         cfgVerbose=True,
+         cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
          cfgSimplifierChainTopBottom=True,
-         cfgSimplifierChainDedup=True,
+         cfgSimplifierChainDedup=False,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True
