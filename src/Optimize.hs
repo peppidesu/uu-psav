@@ -9,6 +9,7 @@ import Control.Monad
 import qualified Data.Map.Strict as M
 import Control.Lens.Plated (rewrite, rewriteM)
 import Data.List
+import Debug.Trace (trace)
 
 infixl 6 :+
 infixl 6 :-
@@ -102,8 +103,8 @@ mkAnd (e : es) = e :&& mkAnd es
 -- | Set-level normalisation of one maximal AND/OR chain
 normChain :: Expr -> Maybe Expr
 normChain e = case e of
-  (_ :|| _) -> go (B True)  (B False) mkOr  orView  absorbOr  e
-  (_ :&& _) -> go (B False) (B True)  mkAnd andView (collapseLowerBounds . absorbAnd) e
+  (_ :|| _) -> go (B True)  (B False) mkOr  orView  ((findBinaryCollapse mergeComparisonsOr) . absorbOr)  e
+  (_ :&& _) -> go (B False) (B True)  mkAnd andView ((findBinaryCollapse mergeComparisonsAnd) . absorbAnd) e
   _         -> Nothing
   where
     go ann unit mk view absorb x
@@ -134,28 +135,44 @@ disjunctOf :: Expr -> Expr -> Bool
 disjunctOf c d@(_ :|| _) = c `elem` orView d
 disjunctOf _ _ = False
 
-mergeLowerBound :: Expr -> Expr -> Maybe Expr
-mergeLowerBound x y = case (x, y) of
+mergeComparisonsAnd :: Expr -> Expr -> Maybe Expr
+mergeComparisonsAnd x y = case (x, y) of
   (I a :<  e1, I b :<  e2) | e1 == e2 -> Just $ if a >= b     then x else y
   (I a :<= e1, I b :<= e2) | e1 == e2 -> Just $ if a >= b     then x else y
   (I a :<  e1, I b :<= e2) | e1 == e2 -> Just $ if a + 1 >= b then x else y
   (I a :<= e1, I b :<  e2) | e1 == e2 -> Just $ if b + 1 >= a then y else x
-  (e1 :<  I a, e2 :<  I b) | e1 == e2 -> Just $ if a <= b     then x else y
-  (e1 :<= I a, e2 :<= I b) | e1 == e2 -> Just $ if a <= b     then x else y
-  (e1 :<  I a, e2 :<= I b) | e1 == e2 -> Just $ if a <= b + 1 then x else y
-  (e1 :<= I a, e2 :<  I b) | e1 == e2 -> Just $ if b <= a + 1 then y else x
+  (I a :<  e1, e2 :<  I b) | e1 == e2 -> if a >= b     then Just $ B False else Nothing
+  (I a :<  e1, e2 :<= I b) | e1 == e2 -> if a >= b     then Just $ B False else Nothing
+  (I a :<= e1, e2 :<  I b) | e1 == e2 -> if a >= b     then Just $ B False else Nothing
+  (I a :<= e1, e2 :<= I b) | e1 == e2 -> if a + 1 >= b then Just $ B False else Nothing
+  (e :< e2, e3 :<= e4)     | e2 == e3 && e == e4  -> Just $ B False
   _                                   -> Nothing
 
-collapseLowerBounds :: [Expr] -> [Expr]
-collapseLowerBounds = foldl' ins []
+mergeComparisonsOr :: Expr -> Expr -> Maybe Expr
+mergeComparisonsOr x y = case (x, y) of
+    (I a :<  e1, I b :<  e2) | e1 == e2 -> Just $ if a >= b     then y else x
+    (I a :<= e1, I b :<= e2) | e1 == e2 -> Just $ if a >= b     then y else x
+    (I a :<  e1, I b :<= e2) | e1 == e2 -> Just $ if a + 1 >= b then y else x
+    (I a :<= e1, I b :<  e2) | e1 == e2 -> Just $ if b + 1 >= a then x else y
+    (I a :<  e1, e2 :<  I b) | e1 == e2 -> if a <= b + 1 then Just $ B True else Nothing
+    (I a :<  e1, e2 :<= I b) | e1 == e2 -> if a <= b     then Just $ B True else Nothing
+    (I a :<= e1, e2 :<  I b) | e1 == e2 -> if a <= b     then Just $ B False else Nothing
+    (I a :<= e1, e2 :<= I b) | e1 == e2 -> if a <= b     then Just $ B False else Nothing
+    (e :< e2, e3 :<= e4)     | e2 == e3 && e == e4  -> Just $ B True
+    _                                   -> Nothing
+
+findBinaryCollapse :: (Expr -> Expr -> Maybe Expr) -> [Expr] -> [Expr]
+findBinaryCollapse fn = foldl' ins []
   where
     ins acc c = case tryMerge c acc of
       Just acc' -> acc'
       Nothing   -> acc ++ [c]
+
     tryMerge _ [] = Nothing
     tryMerge c (a : as)
-      | Just a' <- mergeLowerBound c a = Just (a' : as)
-      | otherwise                      = (a :) <$> tryMerge c as
+      | Just a' <- fn c a = Just (a' : as)
+      | Just a' <- fn a c = Just (a' : as) -- also check all the flip cases
+      | otherwise         = (a :) <$> tryMerge c as
 
 
 truth :: Expr -> Maybe Bool
@@ -218,20 +235,6 @@ step = \case
     Cond c _ e2 | c == B False  -> Just e2
     ---------------------------------------------------------------------------
 
-    -- inclusion/exclusion principle ------------------------------------------
-    (e :< e2)  :|| (e3 :<= e4)  | e2 == e3 && e == e4  -> Just $ B True
-    (e :<= e2) :|| (e3 :< e4)   | e2 == e3 && e == e4  -> Just $ B True
-    (e :< e2)  :&& (e3 :<= e4)  | e2 == e3 && e == e4  -> Just $ B False
-    (e :<= e2) :&& (e3 :< e4)   | e2 == e3 && e == e4  -> Just $ B False
-    (e :<= e2) :&& (e3 :<= e4)  | e2 == e3 && e == e4  -> Just $ e :== e2
-    (e :< e2)  :&& (e3 :<= e4)  | e == e3  && e2 == e4 -> Just $ e :< e2
-    (e :<= e2) :&& (e3 :< e4)   | e == e3  && e2 == e4 -> Just $ e :< e2
-
-    (I a :< e) :&& (I b :< e2)   | e == e2 -> Just $ I (max a b) :< e
-    (I a :< e) :|| (I b :< e2)   | e == e2 -> Just $ I (min a b) :< e
-    (I a :<= e) :&& (I b :<= e2) | e == e2 -> Just $ I (max a b) :<= e
-    (I a :<= e) :|| (I b :<= e2) | e == e2 -> Just $ I (min a b) :<= e
-
     (e :- I a) :< e2  | e == e2 -> Just $ B (a > 0)
     (e :- I a) :<= e2 | e == e2 -> Just $ B (a >= 0)
     (e :- I a) :== e2 | e == e2 -> Just $ B (a == 0)
@@ -242,24 +245,9 @@ step = \case
     (e1 :- I a) :== (e2 :- I b) | e1 == e2 -> Just $ B $ a == b
     (e1 :+ I a) :== (e2 :+ I b) | e1 == e2 -> Just $ B $ a == b
 
-    (I a :<= e1) :&& (I b :<  e2) | e1 == e2 -> Just $ I (max (a - 1) b) :< e1
-    (I a :<= e1) :|| (I b :<  e2) | e1 == e2 -> Just $ I (min (a - 1) b) :< e1
-    (I a :<  e1) :&& (I b :<= e2) | e1 == e2 -> Just $ I (max a (b - 1)) :< e1
-    (I a :<  e1) :|| (I b :<= e2) | e1 == e2 -> Just $ I (min a (b - 1)) :< e1
-
-    (I a :<  e1) :&& (e2 :<  I b) | e1 == e2 && a + 1 >= b -> Just $ B False -- 4 < x && x < 5 is already impossible, but 3 < x && x < 5 is fine (x = 4)
-    (I a :<= e1) :&& (e2 :<  I b) | e1 == e2 && a >= b     -> Just $ B False -- 4 <=x && x < 5 is possible, but 5 <= x && x < 5 isn't
-    (I a :<  e1) :&& (e2 :<= I b) | e1 == e2 && a >= b     -> Just $ B False -- 4 < x && x <=5 is fine, 5 < x && x <= 5 is not
-    (I a :<= e1) :&& (e2 :<= I b) | e1 == e2 && a > b      -> Just $ B False -- 4 <=x && x <=5 is fine, 4 <=x && x <= 4 is as well
-    (I a :<  e1) :|| (e2 :<  I b) | e1 == e2 && a < b      -> Just $ B True  -- x > 3 || x < 4 is true for all x
-    (I a :<= e1) :|| (e2 :<  I b) | e1 == e2 && a <= b     -> Just $ B True  -- x >= 4 || x < 4 is true for all x
-    (I a :<  e1) :|| (e2 :<= I b) | e1 == e2 && a <= b     -> Just $ B True  -- x > 4 || x <= 4 is true for all x
-    (I a :<= e1) :|| (e2 :<= I b) | e1 == e2 && a - 1 <= b -> Just $ B True  -- x >= 6 || x <= 5 is true for all x
-
     e1 :< e2 | e1 == e2 -> Just $ B False
     e1 :<= e2 | e1 == e2 -> Just $ B True
     e1 :== e2 | e1 == e2 -> Just $ B True
-    ---------------------------------------------------------------------------
 
     -- Integer constant folding -----------------------------------------------
     (e :+ I k) :<  I c -> Just (e :<  I (c - k))
