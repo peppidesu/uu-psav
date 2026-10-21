@@ -20,7 +20,7 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 
 main :: AppM ()
 main = do
-     inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
+     inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- liftIO $ getPlain
      if inputs.showHelp
      then liftIO $ putStrLn usage
      else run (inputs)

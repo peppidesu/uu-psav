@@ -8,7 +8,7 @@ import Unroll (unrollUntil)
 import Feasibility (wlpAlwaysFeasibilityCheck)
 import Optimize (optimize)
 import SMT (z3Check)
-import Control.Monad.Extra (firstJustM, when)
+import Control.Monad.Extra (firstJustM, when, concatMapM)
 import GCLParser.GCLDatatype as G
 import GCLParser.Parser (parseGCLfile)
 import Control.DeepSeq
@@ -16,6 +16,8 @@ import GHC.Generics (Generic)
 import Data.Maybe (fromJust, isNothing)
 import Data.List (isPrefixOf)
 import Data.Either (isLeft, fromRight)
+import Types (AppM)
+import Control.Monad.IO.Class
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the 
 -- file program is defined in, so there is an instance declaration here.
@@ -80,15 +82,12 @@ parseGCLfileWithMaybeN path nValue = do
       program {input = (VarDeclaration "N" (PType PTInt)) : input program}
     parseGCLfileWithN' _             (Left _)         = error $ path ++ " failed to parse"
 
-
-
-
-run :: G.Program -> Int -> IO ()
+run :: G.Program -> Int -> AppM ()
 run prog' k = do
     let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral k) $ G.stmt prog
     let varTypes = (getTypes prog)
-    let exprs = concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
-    let optimized = map optimize exprs
-    maybeCounterExample <- firstJustM (z3Check varTypes . G.OpNeg) optimized
+    exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
+    optimized <- mapM optimize exprs
+    maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
     return ()
