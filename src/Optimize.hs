@@ -324,6 +324,7 @@ step = do
 
 optimize :: Expr -> AppM Expr
 optimize e = do
+    enabled <- asksConfig cfgSimplifierEnabled
     step' <- step
     return $ rewrite step' e
 
