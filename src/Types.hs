@@ -4,7 +4,19 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Types where
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+module Types (
+    Stmt(..),
+    PathTree,
+    ExprF(..),
+    embed,
+    ExprAlgebra,
+    foldExpr,
+    AppM(..),
+    Config(..),
+    asksConfig
+) where
 
 import Data.Tree (Tree (..))
 import qualified GCLParser.GCLDatatype as G
@@ -13,6 +25,12 @@ import Data.Functor.Foldable (cata)
 import Data.Map (Map)
 import GCLParser.GCLDatatype (Expr)
 import Control.Lens.Plated (Plated (plate))
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (MonadReader, ReaderT, asks)
+import Control.Monad.State.Strict (MonadState, StateT, modify')
+import Data.Time.Clock (NominalDiffTime)
+import Data.Time (getCurrentTime)
+import Data.Time (diffUTCTime)
 
 data Stmt
     = Skip
@@ -115,3 +133,46 @@ type ExprAlgebra a = ExprF a -> a
 
 foldExpr :: ExprAlgebra a -> G.Expr -> a
 foldExpr = cata
+
+data Config = Config
+    { cfgVerbose     :: !Bool
+    , cfgSimplifierEnabled :: !Bool
+    , cfgSimplifierIntConstFolding :: !Bool
+    , cfgSimplifierBoolConstFolding :: !Bool
+    , cfgSimplifierChainAbsorb :: !Bool
+    , cfgSimplifierChainDedup :: !Bool
+    , cfgSimplifierChainTopBottom :: !Bool
+    , cfgSimplifierChainComparison :: !Bool
+    }
+    deriving stock (Show, Eq)
+
+asksConfig :: (Config -> a) -> AppM a
+asksConfig = asks
+
+data Metrics = Metrics
+    { mtrFeasibilityChecks :: !Int
+    , mtrFeasibilityTrivial :: !Int
+    , mtrFeasibilityPruned :: !Int
+    , mtrFeasibilityPrunedTrivial :: !Int
+    , mSimplifierElapsed :: !NominalDiffTime
+    , mElapsed  :: !NominalDiffTime
+    }
+    deriving stock (Show, Eq)
+
+timed :: AppM a -> AppM a
+timed action = do
+    t0 <- liftIO getCurrentTime
+    r  <- action
+    t1 <- liftIO getCurrentTime
+    modify' $ \m -> m { mElapsed = mElapsed m + diffUTCTime t1 t0 }
+    pure r
+
+newtype AppM a = AppM {unAppM :: ReaderT Config (StateT Metrics IO) a}
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadReader Config
+    , MonadState Metrics
+    )

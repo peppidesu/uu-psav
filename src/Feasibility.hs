@@ -1,13 +1,13 @@
 module Feasibility where
 import Types
-import GCLParser.GCLDatatype (Expr(..), opAnd, BinOp (LessThan))
+import GCLParser.GCLDatatype (Expr(..), opAnd)
 import Data.Tree (Tree(..))
 import WLP(wlp')
-import Debug.Trace
 import Optimize (optimize)
 import SMT (VarTypes, z3Check)
-import GHC.IO (unsafePerformIO)
 import Data.Maybe (isJust)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Extra (concatMapM)
 
 -- | Calculates the wlp for the program consisting of the list of statements, which is listed in reverse order. The given expression is the required post condition.
 -- The wlp is calculated conjunctively with regards to assume.
@@ -22,30 +22,35 @@ wlpConj' e          q = wlp'  e q
 
 -- | Checks if the program with the list of statements (which should be given in reverse), and the given post condition (which should not be
 --  included in the statement list) is feasible.
-check :: VarTypes -> Expr -> [Stmt] -> Bool
+check :: VarTypes -> Expr -> [Stmt] -> AppM Bool
 check types e ts = result
     where
     predicate = optimize $ wlpConj ts e
-    result = unsafePerformIO $ simpleCheck predicate
+    result = simpleCheck =<< predicate
 
     -- soundness | result /= (unsafePerformIO $ simpleCheck $ wlpConj ts e) = error ""
     --           | otherwise = ()
 
     simpleCheck (LitB a) = pure a
-    simpleCheck expr = isJust <$> z3Check types expr
+    simpleCheck expr = liftIO (isJust <$> z3Check types expr)
 
 -- | Takes the PathTree to calculate the wlp for, and a list of statements that is used in the recursion that should start empty.
 -- Check the feasibility for every assume statement it encounters, and stops wlp calculation for anything infeasible.
-wlpAlwaysFeasibilityCheck ::  VarTypes -> [Stmt] -> PathTree -> [Expr]
-wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) [])
-    | check types e prefix = [wlp' (Assume e) (LitB True)]
-    | otherwise                              = []
-wlpAlwaysFeasibilityCheck _     _      (Node x [])
-    = [wlp' x (LitB True)]
+wlpAlwaysFeasibilityCheck ::  VarTypes -> [Stmt] -> PathTree -> AppM [Expr]
+wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) []) = do
+    ok <- check types e prefix
+    pure $ if ok
+        then [wlp' (Assume e) (LitB True)]
+        else []
 
-wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) ts)
-    | check types e prefix = map (wlp' (Assume e)) $ concatMap (wlpAlwaysFeasibilityCheck types ((Assume e) : prefix)) ts
-    | otherwise                              = []
+wlpAlwaysFeasibilityCheck _     _      (Node x [])
+    = pure [wlp' x (LitB True)]
+
+wlpAlwaysFeasibilityCheck types prefix (Node (Assume e) ts) = do
+    ok <- check types e prefix
+    if ok
+        then (map (wlp' (Assume e)) <$> concatMapM (wlpAlwaysFeasibilityCheck types ((Assume e) : prefix)) ts)
+        else pure []
 
 wlpAlwaysFeasibilityCheck types prefix (Node x ts)
-    = map (wlp' x) (concatMap (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)
+    = map (wlp' x) <$> (concatMapM (wlpAlwaysFeasibilityCheck types (x : prefix)) ts)

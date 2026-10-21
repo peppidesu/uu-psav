@@ -14,19 +14,18 @@ import CLI
 import SMT
 import Data.List.Extra (firstJust)
 import qualified ShadowElimination as S
-import Control.Monad.Extra (firstJustM)
+import Control.Monad.Extra (firstJustM, concatMapM)
+import Types (AppM)
+import Control.Monad.IO.Class (MonadIO(liftIO))
 
-
-
-
-
+main :: AppM ()
 main = do
      inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
      if inputs.showHelp
-     then putStrLn usage
+     then liftIO $ putStrLn usage
      else run (inputs)
 
-run :: PlainData -> IO ()
+run :: PlainData -> AppM ()
 run (CLI {
                    plength,
                    conf,
@@ -36,9 +35,9 @@ run (CLI {
     let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
-    let exprs = concatMap (wlpAlwaysFeasibilityCheck varTypes []) paths
-    let optimized = map optimize exprs
-    maybeCounterExample <- firstJustM (z3Check varTypes . G.OpNeg) optimized
+    exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
+    optimized <- mapM optimize exprs
+    maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
     case maybeCounterExample of
-      Just counterexample -> putStrLn $ "Found a counterexample: " ++ show counterexample
-      Nothing             -> putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")
+      Just counterexample -> liftIO $ putStrLn $ "Found a counterexample: " ++ show counterexample
+      Nothing             -> liftIO $ putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")

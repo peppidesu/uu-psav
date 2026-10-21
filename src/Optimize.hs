@@ -10,6 +10,7 @@ import qualified Data.Map.Strict as M
 import Control.Lens.Plated (rewrite, rewriteM)
 import Data.List
 import Debug.Trace (trace)
+import Control.Applicative ((<|>))
 
 infixl 6 :+
 infixl 6 :-
@@ -101,21 +102,34 @@ mkAnd [e]      = e
 mkAnd (e : es) = e :&& mkAnd es
 
 -- | Set-level normalisation of one maximal AND/OR chain
-normChain :: Expr -> Maybe Expr
-normChain e = case e of
-  (_ :|| _) -> go (B True)  (B False) mkOr  orView  ((findBinaryCollapse mergeComparisonsOr) . absorbOr)  e
-  (_ :&& _) -> go (B False) (B True)  mkAnd andView ((findBinaryCollapse mergeComparisonsAnd) . absorbAnd) e
-  _         -> Nothing
-  where
-    go ann unit mk view absorb x
-      | ann `elem` xs = Just ann          -- annihilator present; x -> ann
-      | y == x        = Nothing           -- x was already normal; report no change
-      | otherwise     = Just y            -- x -> y
-      where xs = view x
-            y  = mk                  -- reconstruct tree
-               $ absorb              -- apply absorption
-               $ nub                 -- remove duplicate terms
-               $ filter (/= unit) xs -- remove units
+normChain :: AppM (Expr -> Maybe Expr)
+normChain = do
+    absorbEnabled       <- asksConfig cfgSimplifierChainAbsorb
+    dedupEnabled        <- asksConfig cfgSimplifierChainDedup
+    topBottomEnabled    <- asksConfig cfgSimplifierChainTopBottom
+    comparisonEnabled   <- asksConfig cfgSimplifierChainComparison
+    return $ \e -> case e of
+        (_ :|| _) -> go (B True) topBottomEnabled mkOr  orView  (
+                  (if comparisonEnabled then findBinaryCollapse mergeComparisonsOr else id)
+                . (if absorbEnabled then absorbOr else id)
+                . (if dedupEnabled then nub else id)
+                . (if topBottomEnabled then (filter (/= B False)) else id)
+            ) e
+        (_ :&& _) -> go (B False) topBottomEnabled mkAnd andView  (
+                  (if comparisonEnabled then findBinaryCollapse mergeComparisonsAnd else id)
+                . (if absorbEnabled then absorbAnd else id)
+                . (if dedupEnabled then nub else id)
+                . (if topBottomEnabled then (filter (/= B True)) else id)
+            ) e
+        _         -> Nothing
+        where
+            go ann doAnn mk view transform x
+                | ann `elem` xs && doAnn = Just ann          -- annihilator present; x -> ann
+                | y == x        = Nothing                    -- x was already normal; report no change
+                | otherwise     = Just y                     -- x -> y
+                where
+                    xs = view x
+                    y  = mk $ transform xs
 
 -- | Drop each disjunct that another disjunct implies by being its conjunct.
 absorbOr :: [Expr] -> [Expr]
@@ -201,112 +215,117 @@ truth = \case
   _                             -> Nothing
 
 -- | One rewrite step. 'Nothing' means \"already normal at this node\".
-step :: Expr -> Maybe Expr
-step = \case
-    -- trivial truths
-    e | Just b <- truth e, e /= B b -> Just (B b)
+step :: AppM (Expr -> Maybe Expr)
+step = do
+    truthEnabled <- asksConfig cfgSimplifierBoolConstFolding
+    normChain' <- normChain
+    return $ \case
+        -- trivial truths
+        e | Just b <- truth e, e /= B b && truthEnabled -> Just (B b)
 
-    -- implication definition
-    BinopExpr Implication e e2 -> Just (OpNeg e :|| e2)
+        -- implication definition
+        BinopExpr Implication e e2 -> Just (OpNeg e :|| e2)
 
-    -- negation laws ----------------------------------------------------------
-    OpNeg (OpNeg e)        -> Just e
-    OpNeg (e :|| e2)       -> Just $ OpNeg e :&& OpNeg e2
-    OpNeg (e :&& e2)       -> Just $ OpNeg e :|| OpNeg e2
-    OpNeg (Forall s e)     -> Just $ Exists s (OpNeg e)
-    OpNeg (Exists s e)     -> Just $ Forall s (OpNeg e)
-    OpNeg (e :<= e2)       -> Just $ e2 :< e
-    OpNeg (e :< e2)        -> Just $ e2 :<= e
-    OpNeg (B True)      -> Just (B False)
-    OpNeg (B False)     -> Just (B True)
-    ---------------------------------------------------------------------------
+        -- negation laws ----------------------------------------------------------
+        OpNeg (OpNeg e)        -> Just e
+        OpNeg (e :|| e2)       -> Just $ OpNeg e :&& OpNeg e2
+        OpNeg (e :&& e2)       -> Just $ OpNeg e :|| OpNeg e2
+        OpNeg (Forall s e)     -> Just $ Exists s (OpNeg e)
+        OpNeg (Exists s e)     -> Just $ Forall s (OpNeg e)
+        OpNeg (e :<= e2)       -> Just $ e2 :< e
+        OpNeg (e :< e2)        -> Just $ e2 :<= e
+        OpNeg (B True)      -> Just (B False)
+        OpNeg (B False)     -> Just (B True)
+        ---------------------------------------------------------------------------
 
-    -- Swap comparison to always be < or <= -----------------------------------
-    e :>= e2 -> Just (e2 :<= e)
-    e :>  e2 -> Just (e2 :< e)
-    ---------------------------------------------------------------------------
+        -- Swap comparison to always be < or <= -----------------------------------
+        e :>= e2 -> Just (e2 :<= e)
+        e :>  e2 -> Just (e2 :< e)
+        ---------------------------------------------------------------------------
 
-    -- conjunction / disjunction chain normalization --------------------------
-    e | Just e' <- normChain e -> Just e'
-    ---------------------------------------------------------------------------
+        -- conjunction / disjunction chain normalization --------------------------
+        e | Just e' <- normChain' e -> Just e'
+        ---------------------------------------------------------------------------
 
-    -- trivial conditions -----------------------------------------------------
-    Cond c e _  | c == B True   -> Just e
-    Cond c _ e2 | c == B False  -> Just e2
-    ---------------------------------------------------------------------------
+        -- trivial conditions -----------------------------------------------------
+        Cond c e _  | c == B True   -> Just e
+        Cond c _ e2 | c == B False  -> Just e2
+        ---------------------------------------------------------------------------
 
-    (e :- I a) :< e2  | e == e2 -> Just $ B (a > 0)
-    (e :- I a) :<= e2 | e == e2 -> Just $ B (a >= 0)
-    (e :- I a) :== e2 | e == e2 -> Just $ B (a == 0)
-    (e :+ I a) :< e2  | e == e2 -> Just $ B (a < 0)
-    (e :+ I a) :<= e2 | e == e2 -> Just $ B (a <= 0)
-    (e :+ I a) :== e2 | e == e2 -> Just $ B (a == 0)
+        (e :- I a) :< e2  | e == e2 -> Just $ B (a > 0)
+        (e :- I a) :<= e2 | e == e2 -> Just $ B (a >= 0)
+        (e :- I a) :== e2 | e == e2 -> Just $ B (a == 0)
+        (e :+ I a) :< e2  | e == e2 -> Just $ B (a < 0)
+        (e :+ I a) :<= e2 | e == e2 -> Just $ B (a <= 0)
+        (e :+ I a) :== e2 | e == e2 -> Just $ B (a == 0)
 
-    (e1 :- I a) :== (e2 :- I b) | e1 == e2 -> Just $ B $ a == b
-    (e1 :+ I a) :== (e2 :+ I b) | e1 == e2 -> Just $ B $ a == b
+        (e1 :- I a) :== (e2 :- I b) | e1 == e2 -> Just $ B $ a == b
+        (e1 :+ I a) :== (e2 :+ I b) | e1 == e2 -> Just $ B $ a == b
 
-    e1 :< e2 | e1 == e2 -> Just $ B False
-    e1 :<= e2 | e1 == e2 -> Just $ B True
-    e1 :== e2 | e1 == e2 -> Just $ B True
+        e1 :< e2 | e1 == e2 -> Just $ B False
+        e1 :<= e2 | e1 == e2 -> Just $ B True
+        e1 :== e2 | e1 == e2 -> Just $ B True
 
-    -- Integer constant folding -----------------------------------------------
-    (e :+ I k) :<  I c -> Just (e :<  I (c - k))
-    (e :- I k) :<  I c -> Just (e :<  I (c + k))
-    (e :+ I k) :<= I c -> Just (e :<= I (c - k))
-    (e :- I k) :<= I c -> Just (e :<= I (c + k))
-    (e :+ I k) :== I c -> Just (e :== I (c - k))
-    (e :- I k) :== I c -> Just (e :== I (c + k))
-    I c :<  (e :+ I k) -> Just (I (c - k) :<  e)
-    I c :<  (e :- I k) -> Just (I (c + k) :<  e)
-    I c :<= (e :+ I k) -> Just (I (c - k) :<= e)
-    I c :<= (e :- I k) -> Just (I (c + k) :<= e)
-    I c :== (e :+ I k) -> Just (I (c - k) :== e)
-    I c :== (e :- I k) -> Just (I (c + k) :== e)
+        -- Integer constant folding -----------------------------------------------
+        (e :+ I k) :<  I c -> Just (e :<  I (c - k))
+        (e :- I k) :<  I c -> Just (e :<  I (c + k))
+        (e :+ I k) :<= I c -> Just (e :<= I (c - k))
+        (e :- I k) :<= I c -> Just (e :<= I (c + k))
+        (e :+ I k) :== I c -> Just (e :== I (c - k))
+        (e :- I k) :== I c -> Just (e :== I (c + k))
+        I c :<  (e :+ I k) -> Just (I (c - k) :<  e)
+        I c :<  (e :- I k) -> Just (I (c + k) :<  e)
+        I c :<= (e :+ I k) -> Just (I (c - k) :<= e)
+        I c :<= (e :- I k) -> Just (I (c + k) :<= e)
+        I c :== (e :+ I k) -> Just (I (c - k) :== e)
+        I c :== (e :- I k) -> Just (I (c + k) :== e)
 
-    (I a) :+ (I 0)      -> Just $ I a
-    (I 0) :+ (I b)      -> Just $ I b
-    (I a) :+ (I b)      -> Just $ I (a + b)
-    (e :+ I a) :+ (I b) -> Just $ e :+ I (a + b)
-    (I a :+ e) :+ (I b) -> Just $ e :+ I (a + b)
-    (e :- I a) :+ (I b)
-        | a == b    -> Just e
-        | a >  b    -> Just $ e :- I (a - b)
-        | otherwise -> Just $ e :+ I (b - a)
+        (I a) :+ (I 0)      -> Just $ I a
+        (I 0) :+ (I b)      -> Just $ I b
+        (I a) :+ (I b)      -> Just $ I (a + b)
+        (e :+ I a) :+ (I b) -> Just $ e :+ I (a + b)
+        (I a :+ e) :+ (I b) -> Just $ e :+ I (a + b)
+        (e :- I a) :+ (I b)
+            | a == b    -> Just e
+            | a >  b    -> Just $ e :- I (a - b)
+            | otherwise -> Just $ e :+ I (b - a)
 
-    (I a) :- (I 0)      -> Just $ I a
-    (I 0) :- (I a)      -> Just $ I (-a)
-    (I a) :- (I b)      -> Just $ I (a - b)
-    (e :- I a) :- (I b) -> Just $ e :- I (a + b)
-    (I a :- e) :- (I b) -> Just $ I (a - b) :- e
-    (e :+ I a) :- (I b)
-      | a == b    -> Just e
-      | a <  b    -> Just $ e :- I (b - a)
-      | otherwise -> Just $ e :+ I (a - b)
+        (I a) :- (I 0)      -> Just $ I a
+        (I 0) :- (I a)      -> Just $ I (-a)
+        (I a) :- (I b)      -> Just $ I (a - b)
+        (e :- I a) :- (I b) -> Just $ e :- I (a + b)
+        (I a :- e) :- (I b) -> Just $ I (a - b) :- e
+        (e :+ I a) :- (I b)
+            | a == b    -> Just e
+            | a <  b    -> Just $ e :- I (b - a)
+            | otherwise -> Just $ e :+ I (a - b)
 
-    (I _) :* (I 0)      -> Just $ I 0
-    (I a) :* (I 1)      -> Just $ I a
-    (I 0) :* (I _)      -> Just $ I 0
-    (I 1) :* (I b)      -> Just $ I b
-    (I a) :* (I b)      -> Just $ I (a * b)
-    (I a :* e) :* (I b) -> Just $ e :* I (a * b)
-    (e :* I a) :* (I b) -> Just $ e :* I (a * b)
+        (I _) :* (I 0)      -> Just $ I 0
+        (I a) :* (I 1)      -> Just $ I a
+        (I 0) :* (I _)      -> Just $ I 0
+        (I 1) :* (I b)      -> Just $ I b
+        (I a) :* (I b)      -> Just $ I (a * b)
+        (I a :* e) :* (I b) -> Just $ e :* I (a * b)
+        (e :* I a) :* (I b) -> Just $ e :* I (a * b)
 
-    (I a) :/ (I 1)      -> Just $ I a
-    (I 0) :/ (I _)      -> Just $ I 0
-    (I a) :/ (I b)      | b /= 0 -> Just $ I (div a b)
-    (e :/ I a) :/ (I b) | b /= 0 -> Just $ e :/ I (a * b)
-    (I a :/ e) :/ (I b) | b /= 0 -> Just $ I (div a b) :/ e
+        (I a) :/ (I 1)      -> Just $ I a
+        (I 0) :/ (I _)      -> Just $ I 0
+        (I a) :/ (I b)      | b /= 0 -> Just $ I (div a b)
+        (e :/ I a) :/ (I b) | b /= 0 -> Just $ e :/ I (a * b)
+        (I a :/ e) :/ (I b) | b /= 0 -> Just $ I (div a b) :/ e
 
-    (I a) :< (I b)      -> Just $ B (a <  b)
-    (I a) :<= (I b)     -> Just $ B (a <= b)
-    ---------------------------------------------------------------------------
+        (I a) :< (I b)      -> Just $ B (a <  b)
+        (I a) :<= (I b)     -> Just $ B (a <= b)
+        ---------------------------------------------------------------------------
 
-    Parens e -> Just e  -- remove parens as they are just parser glue and the AST shape ensures correct evaluation order
+        Parens e -> Just e  -- remove parens as they are just parser glue and the AST shape ensures correct evaluation order
 
-    _ -> Nothing
+        _ -> Nothing
 
-optimize :: Expr -> Expr
-optimize = rewrite step
+optimize :: Expr -> AppM Expr
+optimize e = do
+    step' <- step
+    return $ rewrite step' e
 
 -- TODO: dealing with minus in LitI (is this necessary?)
 -- TODO: consider simplifying not (a or b) to (not a) and (not b)
