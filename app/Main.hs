@@ -17,13 +17,13 @@ import qualified ShadowElimination as S
 import Control.Monad.Extra (firstJustM, concatMapM)
 import Types (AppM, Config (Config), runApp)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Types (Config(..))
+import Types (Config(..), asksConfig)
 
 main :: IO ()
 main = do
      inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
      let config = Config {
-         cfgVerbose=False,
+         cfgVerbose=True,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
          cfgSimplifierChainTopBottom=True,
@@ -49,9 +49,7 @@ run (CLI {
     let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
-    exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
-    optimized <- mapM optimize exprs
-    maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
+    maybeCounterExample <- firstJustM (findCounterExample varTypes) paths
     case maybeCounterExample of
       Just counterexample -> liftIO $ putStrLn $ "Found a counterexample: " ++ show counterexample
       Nothing             -> liftIO $ putStrLn $ ("Up to length K = " ++ show plength ++ ", all paths are valid")
