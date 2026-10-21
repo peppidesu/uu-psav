@@ -326,7 +326,7 @@ optimize :: Expr -> AppM Expr
 optimize e = do
     enabled <- asksConfig cfgSimplifierEnabled
     step' <- step
-    return $ rewrite step' e
+    return $ if enabled then rewrite step' e else e
 
 -- TODO: dealing with minus in LitI (is this necessary?)
 -- TODO: consider simplifying not (a or b) to (not a) and (not b)
