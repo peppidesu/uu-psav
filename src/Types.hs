@@ -15,7 +15,8 @@ module Types (
     foldExpr,
     AppM(..),
     Config(..),
-    asksConfig
+    asksConfig,
+    runApp
 ) where
 
 import Data.Tree (Tree (..))
@@ -26,8 +27,8 @@ import Data.Map (Map)
 import GCLParser.GCLDatatype (Expr)
 import Control.Lens.Plated (Plated (plate))
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (MonadReader, ReaderT, asks)
-import Control.Monad.State.Strict (MonadState, StateT, modify')
+import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
+import Control.Monad.State.Strict (MonadState, StateT, modify', runStateT)
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time (getCurrentTime)
 import Data.Time (diffUTCTime)
@@ -149,22 +150,47 @@ data Config = Config
 asksConfig :: (Config -> a) -> AppM a
 asksConfig = asks
 
+-- | Run the app, returning both the result and the collected metrics.
+runApp :: Config -> AppM a -> IO (a, Metrics)
+runApp cfg (AppM m) = runStateT (runReaderT m cfg) emptyMetrics
+
+-- | Run the app and discard the metrics.
+runApp_ :: Config -> AppM a -> IO a
+runApp_ cfg app = fst <$> runApp cfg app
+
 data Metrics = Metrics
     { mtrFeasibilityChecks :: !Int
     , mtrFeasibilityTrivial :: !Int
     , mtrFeasibilityPruned :: !Int
     , mtrFeasibilityPrunedTrivial :: !Int
-    , mSimplifierElapsed :: !NominalDiffTime
-    , mElapsed  :: !NominalDiffTime
+    , mtrSimplifierElapsed :: !NominalDiffTime
+    , mtrElapsed  :: !NominalDiffTime
     }
     deriving stock (Show, Eq)
+
+emptyMetrics :: Metrics
+emptyMetrics = Metrics 0 0 0 0 0 0
+
+-- Metrics form a monoid, so sub-computations can be measured and merged.
+instance Semigroup Metrics where
+    a <> b = Metrics
+        { mtrFeasibilityChecks = mtrFeasibilityChecks a + mtrFeasibilityChecks b
+        , mtrFeasibilityPruned   = mtrFeasibilityPruned a   + mtrFeasibilityPruned b
+        , mtrFeasibilityTrivial    = mtrFeasibilityTrivial a    + mtrFeasibilityTrivial b
+        , mtrFeasibilityPrunedTrivial  = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
+        , mtrElapsed = mtrElapsed a + mtrElapsed b
+        , mtrSimplifierElapsed = mtrSimplifierElapsed a + mtrSimplifierElapsed b
+        }
+
+instance Monoid Metrics where
+    mempty = emptyMetrics
 
 timed :: AppM a -> AppM a
 timed action = do
     t0 <- liftIO getCurrentTime
     r  <- action
     t1 <- liftIO getCurrentTime
-    modify' $ \m -> m { mElapsed = mElapsed m + diffUTCTime t1 t0 }
+    modify' $ \m -> m { mtrElapsed = mtrElapsed m + diffUTCTime t1 t0 }
     pure r
 
 newtype AppM a = AppM {unAppM :: ReaderT Config (StateT Metrics IO) a}

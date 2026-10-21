@@ -15,15 +15,27 @@ import SMT
 import Data.List.Extra (firstJust)
 import qualified ShadowElimination as S
 import Control.Monad.Extra (firstJustM, concatMapM)
-import Types (AppM)
+import Types (AppM, Config (Config), runApp)
 import Control.Monad.IO.Class (MonadIO(liftIO))
+import Types (Config(..))
 
-main :: AppM ()
+main :: IO ()
 main = do
-     inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- liftIO $ getPlain
+     inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
+     let config = Config {
+         cfgVerbose=False,
+         cfgSimplifierIntConstFolding=True,
+         cfgSimplifierEnabled=True,
+         cfgSimplifierChainTopBottom=True,
+         cfgSimplifierChainDedup=True,
+         cfgSimplifierChainComparison=True,
+         cfgSimplifierChainAbsorb=True,
+         cfgSimplifierBoolConstFolding=True
+     }
      if inputs.showHelp
      then liftIO $ putStrLn usage
-     else run (inputs)
+     else fst <$> (runApp config $ run (inputs))
+
 
 run :: PlainData -> AppM ()
 run (CLI {
