@@ -1,9 +1,14 @@
 module Parse where
 import GCLParser.GCLDatatype as G
-import GCLParser.Parser (parseGCLfile)
+import GCLParser.Parser (parseGCLfile, ParseResult)
 import Control.Monad (when)
 import Data.Either
 import Data.List (isPrefixOf)
+
+parseGCLfileWithMaybeN' :: String -> (Maybe Int) -> IO (ParseResult Program)
+parseGCLfileWithMaybeN' path nValue = do
+   a <- (parseGCLfileWithMaybeN path nValue)
+   return $ Right a
 
 -- | Parses the gcl file, then declares N if it is supposed to be present. If a number is given, also gives N this value.
 parseGCLfileWithMaybeN :: String -> (Maybe Int) -> IO (Program)

@@ -3,7 +3,7 @@ import Test.Tasty.HUnit
 import Data.List.Extra (splitOn)
 import Types
 import GCLParser.GCLDatatype as G
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, isJust)
 import qualified ShadowElimination as S
 import Unroll
 import SMT (getTypes, z3Check)
@@ -31,12 +31,12 @@ createTestTree (name, toTest) =
     getTestName path = last $ splitOn "/" path
     testFunc p n config = do 
       prog <- parseGCLfileWithMaybeN p (Just n)
-      runBool prog n config
+      runBool prog 30 config
 
 getTestPathsPerDir :: IO [(String,[(String, Int)])]
 getTestPathsPerDir = do
   pss <- mapM listFiles mutantDirectories
-  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 10)) ps) pss)
+  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 1)) ps) pss)
 
 mutantDirectories :: [String]
 mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
@@ -59,7 +59,7 @@ runBool prog' k config = do
       exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
       optimized <- mapM optimize exprs
       maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
-      return (isNothing maybeCounterExample)
+      return (isJust maybeCounterExample)
 
 configNoSimplifier = (Config {
          cfgVerbose=False,

@@ -23,13 +23,13 @@ import GCLParser.GCLDatatype
 import Data.List.Extra (mconcatMap)
 import qualified Z3Conf  
 import qualified Z3.Opts as Z3 
+import Parse
 
 type PathLength = Int
 type UnsatKind = Bool
 
 data UnsatFreq = UnsatFreq UnsatKind Int
    deriving (Show, Eq)
-
 
 -- CLIGeneric is the general datatype for CLI processed data
 -- conf is meant to store the configuration script parametners
@@ -111,7 +111,7 @@ type PlainData = CLIGeneric PathLength [(String,String)] (ParseResult Program)
 getPlain :: IO PlainData
 getPlain = do
         opts <- getOpts
-        progs <- mapM parseGCLfile opts.gcl
+        progs <- mapM (do flip parseGCLfileWithMaybeN' (Just 10)) opts.gcl
         plainConf <- Z3Conf.getPlain opts.conf
         let numKMaybe = opts.plength
             showHelp'  = opts.showHelp
