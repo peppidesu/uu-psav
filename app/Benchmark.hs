@@ -16,8 +16,9 @@ import GHC.Generics (Generic)
 import Data.Maybe (fromJust, isNothing)
 import Data.List (isPrefixOf)
 import Data.Either (isLeft, fromRight)
-import Types (AppM)
+import Types
 import Control.Monad.IO.Class
+import Parse (parseGCLfileWithMaybeN)
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the 
 -- file program is defined in, so there is an instance declaration here.
@@ -37,14 +38,23 @@ main = do
     -- , benchPath "./examples/benchmark/invalidMin.gcl"      "invalidMin"
     , benchPath "./examples/benchmark/invalidPullUp.gcl"   "invalidPullUp"
     , benchPath "./examples/benchmark/memberOf.gcl"        "memberOf"
-    , benchPath "./examples/benchmark/min.gcl"             "min"
+    -- , benchPath "./examples/benchmark/min.gcl"             "min"
     , benchPath "./examples/benchmark/pullUp.gcl"          "pullUp"
     ]
 
 -- | Runs the given program, with the given N value, on all settings
 allSettings :: Program -> Int -> [Benchmark]
 allSettings program n = [
-  bench "default settings" $ nfIO $ run program n
+  bench "default settings" $ nfIO $ run program n (Config {
+         cfgVerbose=False,
+         cfgSimplifierIntConstFolding=True,
+         cfgSimplifierEnabled=True,
+         cfgSimplifierChainTopBottom=True,
+         cfgSimplifierChainDedup=True,
+         cfgSimplifierChainComparison=True,
+         cfgSimplifierChainAbsorb=True,
+         cfgSimplifierBoolConstFolding=True
+     })
   ]
 
 -- | The default N values ran by all benchmarks
@@ -63,31 +73,16 @@ benchProgram name prog =  bgroup name $
     bgroup ("N = " ++ show n) $ allSettings program n) 
     defaultNValues
 
--- | Parses the gcl file, then declares N if it is supposed to be present. If a number is given, also gives N this value.
-parseGCLfileWithMaybeN :: String -> (Maybe Int) -> IO (Program)
-parseGCLfileWithMaybeN path nValue = do 
-  maybeProgram <- parseGCLfile path
-  when (isLeft maybeProgram) $ error "Program failed to parse"
-  if shouldReplaceN path then do 
-    let fixedProgram = parseGCLfileWithN' nValue maybeProgram
-    return fixedProgram
-  else do
-    return (fromRight undefined maybeProgram)
-  where
-    shouldReplaceN path = isPrefixOf "./examples/benchmark" path
-
-    parseGCLfileWithN' (Just n) (Right program)       = 
-      program {input = (VarDeclaration "N" (PType PTInt)) : input program, stmt = Seq (Assign "N" (LitI n)) (stmt program)}
-    parseGCLfileWithN' Nothing       (Right program)  =
-      program {input = (VarDeclaration "N" (PType PTInt)) : input program}
-    parseGCLfileWithN' _             (Left _)         = error $ path ++ " failed to parse"
-
-run :: G.Program -> Int -> AppM ()
-run prog' k = do
-    let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
-    let paths = unrollUntil (fromIntegral k) $ G.stmt prog
-    let varTypes = (getTypes prog)
-    exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
-    optimized <- mapM optimize exprs
-    maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
-    return ()
+run :: G.Program -> Int -> Config -> IO ()
+run prog' k config = do 
+    (result, _metrics) <- runApp config $ run'
+    pure $ result
+  where 
+    run' = do
+      let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
+      let paths = unrollUntil (fromIntegral k) $ G.stmt prog
+      let varTypes = (getTypes prog)
+      exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
+      optimized <- mapM optimize exprs
+      maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
+      return ()

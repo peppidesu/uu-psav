@@ -45,7 +45,7 @@ replaceVar str = do
     let replStr = case Map.lookup str idsToTemps of
                         Just (x:_) -> x
                         Just [] -> str
-                        Nothing -> error "Error: Variable \"" ++ str ++ "\" not in scope"
+                        Nothing -> error $ "Error: Variable \"" ++ str ++ "\" not in scope"
      in return replStr
 
 -- | New identifier found (input parameter or block statement)
