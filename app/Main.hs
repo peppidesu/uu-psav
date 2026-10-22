@@ -35,7 +35,8 @@ main = do
      if inputs.showHelp
      then liftIO $ putStrLn usage
      else do
-        (result, _metrics) <- runApp config $ run (inputs)
+        (result, metrics) <- runApp config $ run (inputs)
+        liftIO $ putStrLn $ show metrics
         pure $ result
 
 
