@@ -25,9 +25,9 @@ main = do
      let config = Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
-         cfgSimplifierEnabled=True,
+         cfgSimplifierEnabled=False,
          cfgSimplifierChainTopBottom=True,
-         cfgSimplifierChainDedup=False,
+         cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True
@@ -47,7 +47,7 @@ run (CLI {
                    gcl,
                    showHelp}   ) = do
     let Right(prog') = head gcl
-    let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
+    let (prog,(_, _, _renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
     maybeCounterExample <- firstJustM (findCounterExample varTypes) paths
