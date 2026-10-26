@@ -21,6 +21,53 @@ main = do
   let testTrees = map createTestTree testPathsAndName
   defaultMain $ testGroup "Tests" testTrees
 
+data Statistic = Statistic {
+  config :: Config,
+  metrics :: Metrics,
+  fileName :: String,
+  nValue :: Int,
+  wasValid :: Bool
+}
+
+bigFunc :: IO ()
+bigFunc = do
+  testPaths <- getTestPaths
+  generateStatisticsFile testPaths
+  where
+    getTestPaths :: IO ([String])
+    getTestPaths = undefined
+
+generateStatisticsFile :: [String] -> IO ()
+generateStatisticsFile paths = do
+  statistics <- collectStatistics paths
+  let saveLocation = undefined
+  createStatisticFile saveLocation statistics
+
+createStatisticFile :: String -> [Statistic] -> IO ()
+createStatisticFile = undefined
+
+collectStatistics :: [String] -> IO ([Statistic])
+collectStatistics paths = mapM collectStatistic paths
+
+collectStatistic :: String -> IO (Statistic)
+collectStatistic = undefined
+
+runStatistic :: G.Program -> Int -> Config -> IO (Statistic)
+runStatistic = undefined
+
+allNValues :: [Int]
+allNValues = undefined
+
+allKValues :: [Int]
+allKValues = undefined
+
+allConfigs :: [Config]
+allConfigs = undefined
+
+defaultToTest :: [(Config, Int)]
+defaultToTest = undefined
+
+
 createTestTree :: (String, [(String, Int)]) -> TestTree
 createTestTree (name, toTest) =
   testGroup name $
