@@ -6,6 +6,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Types (
     Stmt(..),
     PathTree,
@@ -33,6 +34,7 @@ import Control.Monad.State.Lazy (MonadState (..), StateT, modify', runStateT)
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time (getCurrentTime, diffUTCTime)
 import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT)
+import GHC.Generics (Generic)
 
 data Stmt
     = Skip
@@ -147,7 +149,7 @@ data Config = Config
     , cfgSimplifierChainComparison :: !Bool
     , cfgK :: !Int
     }
-    deriving stock (Show, Eq)
+    deriving stock (Show, Eq, Generic)
 
 asksConfig :: (Config -> a) -> AppM a
 asksConfig = asks

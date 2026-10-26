@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 import Test.Tasty
 import Test.Tasty.HUnit
 import Data.List.Extra (splitOn)
@@ -9,17 +10,18 @@ import Unroll
 import SMT (getTypes, z3Check)
 import Feasibility
 import Control.Monad.Extra (concatMapM, firstJustM)
-import Optimize
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Parse (parseGCLfileWithMaybeN)
 import System.Directory.Extra
+import GHC.Generics (Generic)
 
 
 main :: IO ()
 main = do
-  testPathsAndName <- getTestPathsPerDir
-  let testTrees = map createTestTree testPathsAndName
-  defaultMain $ testGroup "Tests" testTrees
+  bigFunc
+  -- testPathsAndName <- getTestPathsPerDir
+  -- let testTrees = map createTestTree testPathsAndName
+  -- defaultMain $ testGroup "Tests" testTrees
 
 data Statistic = Statistic {
   config :: Config,
@@ -27,7 +29,7 @@ data Statistic = Statistic {
   fileName :: String,
   nValue :: Int,
   wasValid :: Bool
-}
+} deriving (Generic, Show)
 
 bigFunc :: IO ()
 bigFunc = do
@@ -35,38 +37,101 @@ bigFunc = do
   generateStatisticsFile testPaths
   where
     getTestPaths :: IO ([String])
-    getTestPaths = undefined
+    getTestPaths = do
+      mutants <- concatMapM listFiles mutantDirectories
+      -- TODO: add more
+      return mutants
+
 
 generateStatisticsFile :: [String] -> IO ()
 generateStatisticsFile paths = do
   statistics <- collectStatistics paths
-  let saveLocation = undefined
+  let saveLocation = "./test.csv"
   createStatisticFile saveLocation statistics
 
-createStatisticFile :: String -> [Statistic] -> IO ()
-createStatisticFile = undefined
+-- Statistics collection
 
 collectStatistics :: [String] -> IO ([Statistic])
-collectStatistics paths = mapM collectStatistic paths
+collectStatistics paths = concatMapM collectStatisticsWithPath paths
 
-collectStatistic :: String -> IO (Statistic)
-collectStatistic = undefined
+collectStatisticsWithPath :: String -> IO ([Statistic])
+collectStatisticsWithPath path = do mapM (collectStatistic' path) defaultToTest
+  where 
+    collectStatistic' path (n, config) = do 
+      program <- parseGCLfileWithMaybeN path (Just $ n)
+      (metric, runResult) <- runCollectMetricAndBool program (cfgK config) config
+      return Statistic{config = config, metrics = metric, fileName = path, nValue = n, wasValid = runResult }
 
-runStatistic :: G.Program -> Int -> Config -> IO (Statistic)
-runStatistic = undefined
+runCollectMetricAndBool :: G.Program -> Int -> Config -> IO ((Metrics, Bool))
+runCollectMetricAndBool prog' k config = do
+    (result, metrics) <- runApp config $ run'
+    return (metrics, result)
+  where
+    run' = do
+      let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
+      let paths = unrollUntil (fromIntegral k) $ G.stmt prog
+      let varTypes = (getTypes prog)
+      maybeCounterExample <- firstJustM (findCounterExample varTypes) paths
+      return (isNothing maybeCounterExample)
+
+-- Configuration
 
 allNValues :: [Int]
-allNValues = undefined
-
-allKValues :: [Int]
-allKValues = undefined
+allNValues = [2, 5, 10]
 
 allConfigs :: [Config]
-allConfigs = undefined
+allConfigs = [Config {
+         cfgVerbose=False,
+         cfgSimplifierIntConstFolding=True,
+         cfgSimplifierEnabled=True,
+         cfgSimplifierChainTopBottom=True,
+         cfgSimplifierChainDedup=True,
+         cfgSimplifierChainComparison=True,
+         cfgSimplifierChainAbsorb=True,
+         cfgSimplifierBoolConstFolding=True,
+         cfgK=30
+     }]
 
-defaultToTest :: [(Config, Int)]
-defaultToTest = undefined
+defaultToTest :: [(Int, Config)]
+defaultToTest = [ (y,x) | x<-allConfigs, y<-allNValues ]
 
+-- To csv
+createStatisticFile :: String -> [Statistic] -> IO ()
+createStatisticFile path statistics = do
+  let csvString = unlines (csvHeader : (map createCsvLine statistics))
+  writeFile path csvString
+
+createCsvLine :: Statistic -> String
+createCsvLine statistic = 
+  createConfigPart statistic    ++ ","
+  ++ createMetricPart statistic ++ "," 
+  ++ fileName statistic         ++ ","
+  ++ show (nValue statistic)    ++ ","
+  ++ show (wasValid statistic)
+  where
+  createConfigPart realStatistic = let statistic = config realStatistic in
+       show (cfgVerbose statistic)                    ++ ","
+    ++ show (cfgSimplifierEnabled statistic)          ++ ","
+    ++ show (cfgSimplifierIntConstFolding statistic)  ++ ","
+    ++ show (cfgSimplifierBoolConstFolding statistic) ++ ","
+    ++ show (cfgSimplifierChainAbsorb statistic)      ++ ","
+    ++ show (cfgSimplifierChainDedup statistic)       ++ ","
+    ++ show (cfgSimplifierChainTopBottom statistic)   ++ ","
+    ++ show (cfgSimplifierChainComparison statistic)  ++ ","
+    ++ show (cfgK statistic)
+  createMetricPart statistic = let metric = metrics statistic in
+       show (mtrFeasibilityChecks metric)        ++ ","
+    ++ show (mtrFeasibilityTrivial metric)       ++ ","
+    ++ show (mtrFeasibilityPruned metric)        ++ ","
+    ++ show (mtrFeasibilityPrunedTrivial metric) ++ ","
+
+csvHeader :: String
+csvHeader = configcsvHeader ++ "," ++ metricscsvHeader ++ "," ++"fileName,nValue,wasValid"
+  where 
+    configcsvHeader = "cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgK"
+    metricscsvHeader = "mtrFeasibilityChecks,mtrFeasibilityTrivial,mtrFeasibilityPruned,mtrFeasibilityPrunedTrivial"
+
+-- Tests
 
 createTestTree :: (String, [(String, Int)]) -> TestTree
 createTestTree (name, toTest) =
