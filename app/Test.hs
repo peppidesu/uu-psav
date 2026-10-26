@@ -72,13 +72,13 @@ createTestTree :: (String, [(String, Int)]) -> TestTree
 createTestTree (name, toTest) =
   testGroup name $
   map (\(p, n) -> testGroup (getTestName p) [
-    testCase ("simplifier")    (testFunc p n configFullSimplifier @? "Mutant not killed"),
-    testCase ("no simplifier") (testFunc p n configNoSimplifier   @? "Mutant not killed")]) toTest
+    testCase ("simplifier")    (testFunc p n (configFullSimplifier 70) @? "Mutant not killed"),
+    testCase ("no simplifier") (testFunc p n (configNoSimplifier 70)   @? "Mutant not killed")]) toTest
   where
     getTestName path = last $ splitOn "/" path
     testFunc p n config = do
       prog <- parseGCLfileWithMaybeN p (Just n)
-      runBool prog 60 config
+      runBool prog (cfgK config) config
 
 getTestPathsPerDir :: IO [(String,[(String, Int)])]
 getTestPathsPerDir = do
@@ -107,7 +107,7 @@ runBool prog' k config = do
       maybeCounterExample <- firstJustM (findCounterExample varTypes) paths
       return (isJust maybeCounterExample)
 
-configNoSimplifier = (Config {
+configNoSimplifier k = (Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=False,
@@ -115,10 +115,11 @@ configNoSimplifier = (Config {
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
-         cfgSimplifierBoolConstFolding=True
+         cfgSimplifierBoolConstFolding=True,
+         cfgK=k
      })
 
-configFullSimplifier = (Config {
+configFullSimplifier k = (Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
@@ -126,5 +127,6 @@ configFullSimplifier = (Config {
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
-         cfgSimplifierBoolConstFolding=True
+         cfgSimplifierBoolConstFolding=True,
+         cfgK=k
      })

@@ -145,6 +145,7 @@ data Config = Config
     , cfgSimplifierChainDedup :: !Bool
     , cfgSimplifierChainTopBottom :: !Bool
     , cfgSimplifierChainComparison :: !Bool
+    , cfgK :: !Int
     }
     deriving stock (Show, Eq)
 
@@ -190,13 +191,11 @@ data Metrics = Metrics
     , mtrFeasibilityTrivial :: !Int
     , mtrFeasibilityPruned :: !Int
     , mtrFeasibilityPrunedTrivial :: !Int
-    , mtrSimplifierElapsed :: !NominalDiffTime
-    , mtrElapsed  :: !NominalDiffTime
     }
     deriving stock (Show, Eq)
 
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0
 
 -- Metrics form a monoid, so sub-computations can be measured and merged.
 instance Semigroup Metrics where
@@ -205,18 +204,7 @@ instance Semigroup Metrics where
         , mtrFeasibilityPruned   = mtrFeasibilityPruned a   + mtrFeasibilityPruned b
         , mtrFeasibilityTrivial    = mtrFeasibilityTrivial a    + mtrFeasibilityTrivial b
         , mtrFeasibilityPrunedTrivial  = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
-        , mtrElapsed = mtrElapsed a + mtrElapsed b
-        , mtrSimplifierElapsed = mtrSimplifierElapsed a + mtrSimplifierElapsed b
         }
 
 instance Monoid Metrics where
     mempty = emptyMetrics
-
-timed :: AppM a -> AppM a
-timed action = do
-    t0 <- liftIO getCurrentTime
-    r  <- action
-    t1 <- liftIO getCurrentTime
-    modify' $ \m ->
-        m { mtrElapsed = mtrElapsed m + diffUTCTime t1 t0 }
-    pure r

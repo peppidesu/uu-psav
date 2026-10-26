@@ -2,15 +2,10 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 module Optimize where
-import GCLParser.GCLDatatype (BinOp(..), Expr (..), opImplication, opAnd, opOr, Program (name))
+import GCLParser.GCLDatatype (BinOp(..), Expr (..))
 import Types
-import qualified GCLParser.PrettyPrint as G.PP
-import Control.Monad
-import qualified Data.Map.Strict as M
-import Control.Lens.Plated (rewrite, rewriteM)
+import Control.Lens.Plated (rewrite)
 import Data.List
-import Debug.Trace (trace)
-import Control.Applicative ((<|>))
 
 infixl 6 :+
 infixl 6 :-
