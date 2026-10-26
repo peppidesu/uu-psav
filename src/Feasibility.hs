@@ -5,7 +5,7 @@ import Data.Tree (Tree(..))
 import WLP(wlp')
 import Optimize (optimize)
 import SMT (VarTypes, z3Check)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromMaybe)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Extra (concatMapM, firstJustM)
 import Debug.Trace (trace)
@@ -25,53 +25,64 @@ wlpConj' (Assume e) q = opAnd e q   -- treat assume as assert (conjunction)
 wlpConj' (Assert _) q = q           -- ignore asserts
 wlpConj' e          q = wlp'  e q
 
-
+checkProb :: Double -> Int -> Int -> Double
+checkProb q k x | q == 0 = 1 - b
+                | otherwise = (a ** b - a) / (1 - a)
+    where
+        a = 2 ** (-q)
+        b = int2Double x / int2Double k
 -- | Checks if the program with the list of statements (which should be given in reverse), and the given post condition (which should not be
 --  included in the statement list) is feasible.
-check :: VarTypes -> Expr -> [Stmt] -> AppM Bool
-check types e ts = do
+check :: Int -> VarTypes -> Expr -> [Stmt] -> AppM Bool
+check size types e ts = do
     verbose <- asksConfig cfgVerbose
+    k <- asksConfig cfgK
+    q <- asksConfig cfgQ
     rand <- getRandom::AppM Double
-    if rand > (2 ** (-0.05 * int2Double (length ts)))
-        then pure True
-        else do
-            predicate <- optimize $ wlpConj ts e
-            result <- simpleCheck predicate
-            modify $ \m -> m {
-                mtrFeasibilityChecks = mtrFeasibilityChecks m + 1,
-                mtrFeasibilityPruned = mtrFeasibilityPruned m + fromBool (not result)
-            }
-            pure $ if verbose then trace (unlines [
-                "Feasibility: " ++ show predicate,
-                "  = " ++ show result
-             ]) result else result
+    predicate <- optimize $ wlpConj ts e
+    result <- if rand > checkProb q k ((length ts))
+        then fromMaybe True
+            <$> simpleCheck predicate
+        else fromMaybe
+            <$> (liftIO (isJust <$> z3Check types predicate))
+            <*> (simpleCheck predicate)
+    addMetrics mempty {
+        mtrFeasibilityChecks = 1,
+        mtrFeasibilityPruned = fromBool (not result),
+        mtrFeasibilityPrunedAmount = size * fromBool (not result)
+    }
+    pure $ if verbose then trace (unlines [
+        "Feasibility: " ++ show predicate,
+        "  = " ++ show result
+        ]) result else result
 
     where
-        simpleCheck :: Expr -> AppM Bool
+        simpleCheck :: Expr -> AppM (Maybe Bool)
         simpleCheck (LitB a) = do
-            modify $ \m -> m {
-                mtrFeasibilityTrivial = mtrFeasibilityTrivial m + 1,
-                mtrFeasibilityPrunedTrivial = mtrFeasibilityPrunedTrivial m + fromBool (not a)
+            addMetrics mempty {
+                mtrFeasibilityTrivial = 1,
+                mtrFeasibilityPrunedTrivial = fromBool (not a),
+                mtrFeasibilityPrunedAmountTrivial = size * fromBool (not a)
             }
-            pure a
-        simpleCheck expr = do
-            liftIO (isJust <$> z3Check types expr)
+            pure $ Just a
+        simpleCheck _ = pure Nothing
+
 
 findCounterExample :: VarTypes -> PathTree -> AppM (Maybe Expr)
 findCounterExample types = go [] id
     where
     -- k maps a leaf's base wlp to the full path wlp, accumulated from ancestors
     go :: [Stmt] -> (Expr -> Expr) -> PathTree -> AppM (Maybe Expr)
-    go prefix k (Node (Assume e) []) = do
-        ok <- check types e prefix
+    go prefix k node@(Node (Assume e) []) = do
+        ok <- check (treeSize node) types e prefix
         if ok
             then verify types (k (wlp' (Assume e) (LitB True)))
             else pure Nothing
 
     go _ k (Node x []) = verify types (k (wlp' x (LitB True)))
 
-    go prefix k (Node (Assume e) ts) = do
-        ok <- check types e prefix
+    go prefix k node@(Node (Assume e) ts) = do
+        ok <- check (treeSize node) types e prefix
         if ok
             then firstJustM (go (Assume e : prefix) (k . wlp' (Assume e))) ts
             else pure Nothing
