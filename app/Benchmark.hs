@@ -44,8 +44,8 @@ main = do
 
 -- | Runs the given program, with the given N value, on all settings
 allSettings :: Program -> Int -> [Benchmark]
-allSettings program n = [
-  bench "default settings" $ nfIO $ run program n (Config {
+allSettings program k = [
+  bench "default settings" $ nfIO $ run program k (Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
@@ -53,13 +53,17 @@ allSettings program n = [
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
-         cfgSimplifierBoolConstFolding=True
+         cfgSimplifierBoolConstFolding=True,
+         cfgK=k
      })
   ]
 
 -- | The default N values ran by all benchmarks
 defaultNValues :: [Int]
-defaultNValues = [1, 5, 10, 20]
+defaultNValues = [4, 8, 16, 32]
+
+defaultKValues :: [Int]
+defaultKValues = [16, 32, 48]
 
 -- | Benches the program at the path, while using the given name. Runs on all the defaultNValues on all settings
 benchPath :: String -> String -> Benchmark
@@ -69,9 +73,10 @@ benchPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc -
 -- | Benches on all defaultNValues
 benchProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
 benchProgram name prog =  bgroup name $
-  map (\n ->  env (prog (Just n)) $ \program ->
-    bgroup ("N = " ++ show n) $ allSettings program n)
-    defaultNValues
+  concatMap (\k -> map (mkGroup k) defaultNValues) defaultKValues
+  where
+      mkGroup k n = env (prog (Just n)) $ \program ->
+          bgroup ("N = " ++ show n ++ ", K = " ++ show k) $ allSettings program k
 
 run :: G.Program -> Int -> Config -> IO ()
 run prog' k config = do
