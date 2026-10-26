@@ -111,7 +111,7 @@ type PlainData = CLIGeneric PathLength [(String,String)] (ParseResult Program)
 getPlain :: IO PlainData
 getPlain = do
         opts <- getOpts
-        progs <- mapM (do flip parseGCLfileWithMaybeN' (Just 10)) opts.gcl
+        progs <- mapM (do flip parseGCLfileWithMaybeN' (Just 2)) opts.gcl
         plainConf <- Z3Conf.getPlain opts.conf
         let numKMaybe = opts.plength
             showHelp'  = opts.showHelp
