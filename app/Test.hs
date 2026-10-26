@@ -56,8 +56,8 @@ collectStatistics paths = concatMapM collectStatisticsWithPath paths
 
 collectStatisticsWithPath :: String -> IO ([Statistic])
 collectStatisticsWithPath path = do mapM (collectStatistic' path) defaultToTest
-  where 
-    collectStatistic' path (n, config) = do 
+  where
+    collectStatistic' path (n, config) = do
       program <- parseGCLfileWithMaybeN path (Just $ n)
       (metric, runResult) <- runCollectMetricAndBool program (cfgK config) config
       return Statistic{config = config, metrics = metric, fileName = path, nValue = n, wasValid = runResult }
@@ -89,7 +89,8 @@ allConfigs = [Config {
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
-         cfgK=30
+         cfgK=30,
+         cfgQ=1
      }]
 
 defaultToTest :: [(Int, Config)]
@@ -102,9 +103,9 @@ createStatisticFile path statistics = do
   writeFile path csvString
 
 createCsvLine :: Statistic -> String
-createCsvLine statistic = 
+createCsvLine statistic =
   createConfigPart statistic    ++ ","
-  ++ createMetricPart statistic ++ "," 
+  ++ createMetricPart statistic ++ ","
   ++ fileName statistic         ++ ","
   ++ show (nValue statistic)    ++ ","
   ++ show (wasValid statistic)
@@ -127,7 +128,7 @@ createCsvLine statistic =
 
 csvHeader :: String
 csvHeader = configcsvHeader ++ "," ++ metricscsvHeader ++ "," ++"fileName,nValue,wasValid"
-  where 
+  where
     configcsvHeader = "cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgK"
     metricscsvHeader = "mtrFeasibilityChecks,mtrFeasibilityTrivial,mtrFeasibilityPruned,mtrFeasibilityPrunedTrivial"
 
