@@ -158,7 +158,7 @@ mergeComparisonsAnd x y = case (x, y) of
   (I a :<  e1, e2 :<  I b) | e1 == e2 -> if a >= b     then Just $ B False else Nothing
   (I a :<  e1, e2 :<= I b) | e1 == e2 -> if a >= b     then Just $ B False else Nothing
   (I a :<= e1, e2 :<  I b) | e1 == e2 -> if a >= b     then Just $ B False else Nothing
-  (I a :<= e1, e2 :<= I b) | e1 == e2 -> if a + 1 >= b then Just $ B False else Nothing
+  (I a :<= e1, e2 :<= I b) | e1 == e2 -> if a >  b     then Just $ B False else Nothing
   (e :< e2, e3 :<= e4)     | e2 == e3 && e == e4  -> Just $ B False
   _                                   -> Nothing
 
@@ -168,10 +168,10 @@ mergeComparisonsOr x y = case (x, y) of
     (I a :<= e1, I b :<= e2) | e1 == e2 -> Just $ if a >= b     then y else x
     (I a :<  e1, I b :<= e2) | e1 == e2 -> Just $ if a + 1 >= b then y else x
     (I a :<= e1, I b :<  e2) | e1 == e2 -> Just $ if b + 1 >= a then x else y
-    (I a :<  e1, e2 :<  I b) | e1 == e2 -> if a <= b + 1 then Just $ B True else Nothing
+    (I a :<  e1, e2 :<  I b) | e1 == e2 -> if a <  b     then Just $ B True else Nothing
     (I a :<  e1, e2 :<= I b) | e1 == e2 -> if a <= b     then Just $ B True else Nothing
-    (I a :<= e1, e2 :<  I b) | e1 == e2 -> if a <= b     then Just $ B False else Nothing
-    (I a :<= e1, e2 :<= I b) | e1 == e2 -> if a <= b     then Just $ B False else Nothing
+    (I a :<= e1, e2 :<  I b) | e1 == e2 -> if a <= b     then Just $ B True else Nothing
+    (I a :<= e1, e2 :<= I b) | e1 == e2 -> if a <= b     then Just $ B True else Nothing
     (e :< e2, e3 :<= e4)     | e2 == e3 && e == e4  -> Just $ B True
     _                                   -> Nothing
 

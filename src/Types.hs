@@ -15,6 +15,7 @@ module Types (
     foldExpr,
     AppM(..),
     Config(..),
+    Metrics(..),
     asksConfig,
     runApp
 ) where
@@ -28,10 +29,10 @@ import GCLParser.GCLDatatype (Expr)
 import Control.Lens.Plated (Plated (plate))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
-import Control.Monad.State.Strict (MonadState, StateT, modify', runStateT)
+import Control.Monad.State.Lazy (MonadState (..), StateT, modify', runStateT)
 import Data.Time.Clock (NominalDiffTime)
-import Data.Time (getCurrentTime)
-import Data.Time (diffUTCTime)
+import Data.Time (getCurrentTime, diffUTCTime)
+import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT)
 
 data Stmt
     = Skip
@@ -150,13 +151,39 @@ data Config = Config
 asksConfig :: (Config -> a) -> AppM a
 asksConfig = asks
 
+
+newtype AppM a = AppM {unAppM ::
+    ReaderT Config  (
+    StateT  Metrics (
+    RandT   StdGen
+    IO)) a}
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadReader Config
+    , MonadState  Metrics
+    , MonadRandom
+    )
+
 -- | Run the app, returning both the result and the collected metrics.
 runApp :: Config -> AppM a -> IO (a, Metrics)
-runApp cfg (AppM m) = runStateT (runReaderT m cfg) emptyMetrics
+runApp cfg (AppM m) = evalRandT (runStateT (runReaderT m cfg) emptyMetrics) (mkStdGen 42)
 
 -- | Run the app and discard the metrics.
 runApp_ :: Config -> AppM a -> IO a
 runApp_ cfg app = fst <$> runApp cfg app
+
+-- | Metrics produced by 'act', also folded into the enclosing total.
+collectMetrics :: AppM a -> AppM (a, Metrics)
+collectMetrics act = do
+  before  <- get
+  put mempty
+  a       <- act
+  scoped  <- get
+  put (before <> scoped)
+  pure (a, scoped)
 
 data Metrics = Metrics
     { mtrFeasibilityChecks :: !Int
@@ -190,15 +217,6 @@ timed action = do
     t0 <- liftIO getCurrentTime
     r  <- action
     t1 <- liftIO getCurrentTime
-    modify' $ \m -> m { mtrElapsed = mtrElapsed m + diffUTCTime t1 t0 }
+    modify' $ \m ->
+        m { mtrElapsed = mtrElapsed m + diffUTCTime t1 t0 }
     pure r
-
-newtype AppM a = AppM {unAppM :: ReaderT Config (StateT Metrics IO) a}
-  deriving newtype
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadIO
-    , MonadReader Config
-    , MonadState Metrics
-    )

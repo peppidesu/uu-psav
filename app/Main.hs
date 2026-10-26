@@ -23,9 +23,9 @@ main :: IO ()
 main = do
      inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
      let config = Config {
-         cfgVerbose=True,
+         cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
-         cfgSimplifierEnabled=True,
+         cfgSimplifierEnabled=False,
          cfgSimplifierChainTopBottom=True,
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
@@ -35,7 +35,8 @@ main = do
      if inputs.showHelp
      then liftIO $ putStrLn usage
      else do
-        (result, _metrics) <- runApp config $ run (inputs)
+        (result, metrics) <- runApp config $ run (inputs)
+        liftIO $ putStrLn $ show metrics
         pure $ result
 
 
@@ -46,7 +47,7 @@ run (CLI {
                    gcl,
                    showHelp}   ) = do
     let Right(prog') = head gcl
-    let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
+    let (prog,(_, _, _renamingRecovery)) = S.shadowElim prog'
     let paths = unrollUntil (fromIntegral plength) $ G.stmt prog
     let varTypes = (getTypes prog)
     maybeCounterExample <- firstJustM (findCounterExample varTypes) paths

@@ -5,7 +5,7 @@ import Criterion.Main
 import qualified ShadowElimination as S
 import SMT (getTypes)
 import Unroll (unrollUntil)
-import Feasibility (wlpAlwaysFeasibilityCheck)
+import Feasibility (findCounterExample)
 import Optimize (optimize)
 import SMT (z3Check)
 import Control.Monad.Extra (firstJustM, when, concatMapM)
@@ -20,13 +20,13 @@ import Types
 import Control.Monad.IO.Class
 import Parse (parseGCLfileWithMaybeN)
 
--- The env function of criterion requires program to be NFData. We do not have an easy way to change the 
+-- The env function of criterion requires program to be NFData. We do not have an easy way to change the
 -- file program is defined in, so there is an instance declaration here.
 instance Generic Program
 instance NFData Program where rnf x = seq x ()
 
 main :: IO ()
-main = do 
+main = do
   defaultMain [
       benchPath "./examples/benchmark/bsort.gcl"           "bsort"
     , benchPath "./examples/benchmark/divByN.gcl"          "divByN"
@@ -68,21 +68,19 @@ benchPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc -
 
 -- | Benches on all defaultNValues
 benchProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
-benchProgram name prog =  bgroup name $ 
-  map (\n ->  env (prog (Just n)) $ \program -> 
-    bgroup ("N = " ++ show n) $ allSettings program n) 
+benchProgram name prog =  bgroup name $
+  map (\n ->  env (prog (Just n)) $ \program ->
+    bgroup ("N = " ++ show n) $ allSettings program n)
     defaultNValues
 
 run :: G.Program -> Int -> Config -> IO ()
-run prog' k config = do 
+run prog' k config = do
     (result, _metrics) <- runApp config $ run'
     pure $ result
-  where 
+  where
     run' = do
-      let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
+      let (prog,(_, _, _renamingRecovery)) = S.shadowElim prog'
       let paths = unrollUntil (fromIntegral k) $ G.stmt prog
       let varTypes = (getTypes prog)
-      exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
-      optimized <- mapM optimize exprs
-      maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
+      _ <- firstJustM (findCounterExample varTypes) paths
       return ()

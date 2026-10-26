@@ -29,36 +29,35 @@ createTestTree (name, toTest) =
     testCase ("no simplifier") (testFunc p n configNoSimplifier   @? "Mutant not killed")]) toTest
   where
     getTestName path = last $ splitOn "/" path
-    testFunc p n config = do 
+    testFunc p n config = do
       prog <- parseGCLfileWithMaybeN p (Just n)
-      runBool prog 30 config
+      runBool prog 60 config
 
 getTestPathsPerDir :: IO [(String,[(String, Int)])]
 getTestPathsPerDir = do
   pss <- mapM listFiles mutantDirectories
-  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 1)) ps) pss)
+  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 4)) ps) pss)
 
 mutantDirectories :: [String]
 mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
-  "bsort", 
-  "divByN", 
-  -- "find12", 
-  "memberOf", 
-  -- "min", 
+  "bsort",
+  "divByN",
+  -- "find12",
+  "memberOf",
+  -- "min",
   "pullUp"]
 
 runBool :: G.Program -> Int -> Config -> IO (Bool)
-runBool prog' k config = do 
-    (result, _metrics) <- runApp config $ run'
+runBool prog' k config = do
+    (result, metrics) <- runApp config $ run'
+    liftIO $ putStrLn $ show metrics
     pure $ result
-  where 
+  where
     run' = do
       let (prog,(_, _, renamingRecovery)) = S.shadowElim prog'
       let paths = unrollUntil (fromIntegral k) $ G.stmt prog
       let varTypes = (getTypes prog)
-      exprs <- concatMapM (wlpAlwaysFeasibilityCheck varTypes []) paths
-      optimized <- mapM optimize exprs
-      maybeCounterExample <- liftIO $ firstJustM (z3Check varTypes . G.OpNeg) optimized
+      maybeCounterExample <- firstJustM (findCounterExample varTypes) paths
       return (isJust maybeCounterExample)
 
 configNoSimplifier = (Config {

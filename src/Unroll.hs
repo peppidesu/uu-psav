@@ -29,8 +29,8 @@ unroll (G.IfThenElse cond sIf sElse) = [
 unroll while@(G.While cond body) = [
     -- unroll loop entry and loop exit scenarios.
     -- loop entry will recurse back to this statement.
-    Node (Assume (G.OpNeg cond)) [],
-    Node (Assume cond)           (graftToLeaves (unroll while) (unroll body))
+    Node (Assume cond)           (graftToLeaves (unroll while) (unroll body)),
+    Node (Assume (G.OpNeg cond)) []
  ]
 
 -- primitive statements, these do not need to be unrolled.
