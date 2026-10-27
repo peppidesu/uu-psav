@@ -17,8 +17,10 @@ module Types (
     AppM(..),
     Config(..),
     Metrics(..),
+    addMetrics,
     asksConfig,
-    runApp
+    runApp,
+    treeSize
 ) where
 
 import Data.Tree (Tree (..))
@@ -30,7 +32,7 @@ import GCLParser.GCLDatatype (Expr)
 import Control.Lens.Plated (Plated (plate))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
-import Control.Monad.State.Lazy (MonadState (..), StateT, modify', runStateT)
+import Control.Monad.State.Lazy (MonadState (..), StateT, runStateT, modify)
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time (getCurrentTime, diffUTCTime)
 import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT)
@@ -55,6 +57,10 @@ instance Show Stmt where
 -- are next statements that can be executed. Exploring to a leaf node produces
 -- a program path.
 type PathTree = Tree Stmt
+
+treeSize :: PathTree -> Int
+treeSize (Node _ []) = 1
+treeSize (Node _ xs) = foldr (+) 1 (map treeSize xs)
 
 -- https://wiki.haskell.org/Catamorphisms
 data ExprF a
@@ -113,8 +119,6 @@ embed = \case
     NewStoreF e        -> G.NewStore e
     DereferenceF s     -> G.Dereference s
 
-
-
 instance Plated G.Expr where
     plate f = \case
         G.Var s             -> pure (G.Var s)
@@ -148,6 +152,7 @@ data Config = Config
     , cfgSimplifierChainTopBottom :: !Bool
     , cfgSimplifierChainComparison :: !Bool
     , cfgK :: !Int
+    , cfgQ :: !Double
     }
     deriving stock (Show, Eq, Generic)
 
@@ -178,34 +183,32 @@ runApp cfg (AppM m) = evalRandT (runStateT (runReaderT m cfg) emptyMetrics) (mkS
 runApp_ :: Config -> AppM a -> IO a
 runApp_ cfg app = fst <$> runApp cfg app
 
--- | Metrics produced by 'act', also folded into the enclosing total.
-collectMetrics :: AppM a -> AppM (a, Metrics)
-collectMetrics act = do
-  before  <- get
-  put mempty
-  a       <- act
-  scoped  <- get
-  put (before <> scoped)
-  pure (a, scoped)
 
 data Metrics = Metrics
     { mtrFeasibilityChecks :: !Int
     , mtrFeasibilityTrivial :: !Int
     , mtrFeasibilityPruned :: !Int
     , mtrFeasibilityPrunedTrivial :: !Int
+    , mtrFeasibilityPrunedAmount :: !Int
+    , mtrFeasibilityPrunedAmountTrivial :: !Int
     }
     deriving stock (Show, Eq)
 
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0 0 0
+
+addMetrics :: Metrics -> AppM ()
+addMetrics m = modify (<> m)
 
 -- Metrics form a monoid, so sub-computations can be measured and merged.
 instance Semigroup Metrics where
     a <> b = Metrics
         { mtrFeasibilityChecks = mtrFeasibilityChecks a + mtrFeasibilityChecks b
-        , mtrFeasibilityPruned   = mtrFeasibilityPruned a   + mtrFeasibilityPruned b
-        , mtrFeasibilityTrivial    = mtrFeasibilityTrivial a    + mtrFeasibilityTrivial b
-        , mtrFeasibilityPrunedTrivial  = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
+        , mtrFeasibilityPruned = mtrFeasibilityPruned a   + mtrFeasibilityPruned b
+        , mtrFeasibilityTrivial = mtrFeasibilityTrivial a    + mtrFeasibilityTrivial b
+        , mtrFeasibilityPrunedTrivial = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
+        , mtrFeasibilityPrunedAmount = mtrFeasibilityPrunedAmount a + mtrFeasibilityPrunedAmount b
+        , mtrFeasibilityPrunedAmountTrivial = mtrFeasibilityPrunedAmountTrivial a + mtrFeasibilityPrunedAmountTrivial b
         }
 
 instance Monoid Metrics where

@@ -71,18 +71,8 @@ allSettings program k = [
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
-         cfgK=k
-     }),
-  bench "no simplifier" $ nfIO $ run program k (Config {
-        cfgVerbose=False,
-        cfgSimplifierIntConstFolding=True,
-        cfgSimplifierEnabled=False,
-        cfgSimplifierChainTopBottom=True,
-        cfgSimplifierChainDedup=True,
-        cfgSimplifierChainComparison=True,
-        cfgSimplifierChainAbsorb=True,
-        cfgSimplifierBoolConstFolding=True,
-        cfgK=k
+         cfgK=k,
+         cfgQ=1
      })
   ]
 

@@ -56,8 +56,8 @@ collectStatistics paths = concatMapM collectStatisticsWithPath paths
 
 collectStatisticsWithPath :: String -> IO ([Statistic])
 collectStatisticsWithPath path = do mapM (collectStatistic' path) defaultToTest
-  where 
-    collectStatistic' path (n, config) = do 
+  where
+    collectStatistic' path (n, config) = do
       program <- parseGCLfileWithMaybeN path (Just $ n)
       (metric, runResult) <- runCollectMetricAndBool program (cfgK config) config
       return Statistic{config = config, metrics = metric, fileName = path, nValue = n, wasValid = runResult }
@@ -89,18 +89,8 @@ allConfigs = [Config {
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
-         cfgK=30
-     },
-     Config {
-         cfgVerbose=False,
-         cfgSimplifierIntConstFolding=True,
-         cfgSimplifierEnabled=False,
-         cfgSimplifierChainTopBottom=True,
-         cfgSimplifierChainDedup=True,
-         cfgSimplifierChainComparison=True,
-         cfgSimplifierChainAbsorb=True,
-         cfgSimplifierBoolConstFolding=True,
-         cfgK=30
+         cfgK=30,
+         cfgQ=1
      }]
 
 defaultToTest :: [(Int, Config)]
@@ -113,9 +103,9 @@ createStatisticFile path statistics = do
   writeFile path csvString
 
 createCsvLine :: Statistic -> String
-createCsvLine statistic = 
+createCsvLine statistic =
   createConfigPart statistic    ++ ","
-  ++ createMetricPart statistic ++ "," 
+  ++ createMetricPart statistic ++ ","
   ++ fileName statistic         ++ ","
   ++ show (nValue statistic)    ++ ","
   ++ show (wasValid statistic)
@@ -138,7 +128,7 @@ createCsvLine statistic =
 
 csvHeader :: String
 csvHeader = configcsvHeader ++ "," ++ metricscsvHeader ++ "," ++"fileName,nValue,wasValid"
-  where 
+  where
     configcsvHeader = "cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgK"
     metricscsvHeader = "mtrFeasibilityChecks,mtrFeasibilityTrivial,mtrFeasibilityPruned,mtrFeasibilityPrunedTrivial"
 
@@ -148,8 +138,8 @@ createTestTree :: (String, [(String, Int)]) -> TestTree
 createTestTree (name, toTest) =
   testGroup name $
   map (\(p, n) -> testGroup (getTestName p) [
-    testCase ("simplifier")    (testFunc p n (configFullSimplifier 70) @? "Mutant not killed"),
-    testCase ("no simplifier") (testFunc p n (configNoSimplifier 70)   @? "Mutant not killed")]) toTest
+    testCase ("simplifier")    (testFunc p n (configFullSimplifier 80) @? "Mutant not killed"),
+    testCase ("no simplifier") (testFunc p n (configNoSimplifier 80)   @? "Mutant not killed")]) toTest
   where
     getTestName path = last $ splitOn "/" path
     testFunc p n config = do
@@ -159,11 +149,10 @@ createTestTree (name, toTest) =
 getTestPathsPerDir :: IO [(String,[(String, Int)])]
 getTestPathsPerDir = do
   pss <- mapM listFiles mutantDirectories
-  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 4)) ps) pss)
+  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 6)) ps) pss)
 
 mutantDirectories :: [String]
 mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
-  "bsort",
   "divByN",
   -- "find12",
   "memberOf",
@@ -173,7 +162,7 @@ mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
 runBool :: G.Program -> Int -> Config -> IO (Bool)
 runBool prog' k config = do
     (result, metrics) <- runApp config $ run'
-    liftIO $ putStrLn $ show metrics
+    putStrLn $ show metrics
     pure $ result
   where
     run' = do
@@ -192,7 +181,8 @@ configNoSimplifier k = (Config {
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
-         cfgK=k
+         cfgK=k,
+         cfgQ=1
      })
 
 configFullSimplifier k = (Config {
@@ -204,5 +194,6 @@ configFullSimplifier k = (Config {
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
-         cfgK=k
+         cfgK=k,
+         cfgQ=1
      })
