@@ -14,11 +14,12 @@ import GCLParser.Parser (parseGCLfile)
 import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.Maybe (fromJust, isNothing)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, stripPrefix)
 import Data.Either (isLeft, fromRight)
 import Types
 import Control.Monad.IO.Class
 import Parse (parseGCLfileWithMaybeN)
+import System.Directory.Extra (listFiles)
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the
 -- file program is defined in, so there is an instance declaration here.
@@ -27,7 +28,10 @@ instance NFData Program where rnf x = seq x ()
 
 main :: IO ()
 main = do
+  mutants <- getMutantPaths
+
   defaultMain [
+    bgroup "regular"[
       benchPath "./examples/benchmark/bsort.gcl"           "bsort"
     , benchPath "./examples/benchmark/divByN.gcl"          "divByN"
     -- , benchPath "./examples/benchmark/find12.gcl"          "find12"
@@ -40,7 +44,20 @@ main = do
     , benchPath "./examples/benchmark/memberOf.gcl"        "memberOf"
     -- , benchPath "./examples/benchmark/min.gcl"             "min"
     , benchPath "./examples/benchmark/pullUp.gcl"          "pullUp"
+    ],
+    bgroup "mutants" (map benchDirectory mutants)
     ]
+
+-- | Gets a list of tuples, with (mutantDirectory, [MutantPaths])
+getMutantPaths :: IO ([(String, [String])])
+getMutantPaths =  do
+  pss <- mapM listFiles mutantDirectories
+  return $ zip mutantDirectories pss
+    where 
+      mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
+        "divByN",
+        "memberOf",
+        "pullUp"]
 
 -- | Runs the given program, with the given N value, on all settings
 allSettings :: Program -> Int -> [Benchmark]
@@ -55,15 +72,32 @@ allSettings program k = [
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
          cfgK=k
+     }),
+  bench "no simplifier" $ nfIO $ run program k (Config {
+        cfgVerbose=False,
+        cfgSimplifierIntConstFolding=True,
+        cfgSimplifierEnabled=False,
+        cfgSimplifierChainTopBottom=True,
+        cfgSimplifierChainDedup=True,
+        cfgSimplifierChainComparison=True,
+        cfgSimplifierChainAbsorb=True,
+        cfgSimplifierBoolConstFolding=True,
+        cfgK=k
      })
   ]
 
 -- | The default N values ran by all benchmarks
 defaultNValues :: [Int]
-defaultNValues = [4, 8, 16, 32]
+defaultNValues = [10]--, 8, 16, 32]
 
 defaultKValues :: [Int]
-defaultKValues = [16, 32, 48]
+defaultKValues = [16, 32] --, 48]
+
+-- | Benches the directory. This function should be given the path of the directory, and a list of paths to files within that directory.
+benchDirectory :: (String, [String]) -> Benchmark
+benchDirectory (directory, paths) = bgroup (getName directory) (map (\p -> benchPath p (getName p)) paths)
+  where 
+    getName path = fromJust $ stripPrefix "./examples/benchmark/mutants" path
 
 -- | Benches the program at the path, while using the given name. Runs on all the defaultNValues on all settings
 benchPath :: String -> String -> Benchmark

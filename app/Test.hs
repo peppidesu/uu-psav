@@ -90,6 +90,17 @@ allConfigs = [Config {
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
          cfgK=30
+     },
+     Config {
+         cfgVerbose=False,
+         cfgSimplifierIntConstFolding=True,
+         cfgSimplifierEnabled=False,
+         cfgSimplifierChainTopBottom=True,
+         cfgSimplifierChainDedup=True,
+         cfgSimplifierChainComparison=True,
+         cfgSimplifierChainAbsorb=True,
+         cfgSimplifierBoolConstFolding=True,
+         cfgK=30
      }]
 
 defaultToTest :: [(Int, Config)]
