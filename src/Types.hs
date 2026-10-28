@@ -20,8 +20,8 @@ module Types (
     addMetrics,
     asksConfig,
     runApp,
-    treeSize,
-    pathCount
+    pathCount,
+    exprSize,
 ) where
 
 import Data.Tree (Tree (..))
@@ -53,19 +53,23 @@ instance Show Stmt where
     show (Assign ident e)       = ident ++ " := " ++ show e
     show (AAssign ident i e)    = ident ++ "[" ++ show i ++ "]" ++ " := " ++ show e
 
+exprSize :: Expr -> Int
+exprSize = cata $ \case
+    VarF _ -> 1
+    LitBF _ -> 1
+    LitIF _ -> 1
+    LitNullF -> 1
+    DereferenceF _ -> 1
+    e -> foldr (+) 0 e
 
 -- |Tree of program paths. Each node is a statement, and its children
 -- are next statements that can be executed. Exploring to a leaf node produces
 -- a program path.
 type PathTree = Tree Stmt
 
-treeSize :: PathTree -> Int
-treeSize (Node _ []) = 1
-treeSize (Node _ xs) = foldr (+) 1 (map treeSize xs)
-
 pathCount :: PathTree -> Int
 pathCount (Node _ []) = 1
-pathCount (Node _ xs) = sum (map treeSize xs)
+pathCount (Node _ xs) = sum (map pathCount xs)
 
 -- https://wiki.haskell.org/Catamorphisms
 data ExprF a
@@ -150,12 +154,13 @@ foldExpr = cata
 data Config = Config
     { cfgVerbose     :: !Bool
     , cfgSimplifierEnabled :: !Bool
-    , cfgSimplifierIntConstFolding :: !Bool
     , cfgSimplifierBoolConstFolding :: !Bool
     , cfgSimplifierChainAbsorb :: !Bool
     , cfgSimplifierChainDedup :: !Bool
     , cfgSimplifierChainTopBottom :: !Bool
     , cfgSimplifierChainComparison :: !Bool
+    , cfgAlwaysSimpleCheck :: !Bool
+    , cfgHeuristic :: !Bool
     , cfgK :: !Int
     , cfgQ :: !Double
     }
@@ -198,13 +203,14 @@ data Metrics = Metrics
     , mtrFeasibilityTrivial :: !Int
     , mtrFeasibilityPrunedZ3 :: !Int
     , mtrFeasibilityPrunedTrivial :: !Int
+    , mtrFormulaLength :: !Int
     , mtrFeasibilityPrunedAmountZ3 :: !Int
     , mtrFeasibilityPrunedAmountTrivial :: !Int
     }
     deriving stock (Show, Eq)
 
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0 0 0 0 0
 
 addMetrics :: Metrics -> AppM ()
 addMetrics m = modify (<> m)
@@ -218,6 +224,7 @@ instance Semigroup Metrics where
         , mtrFeasibilityPrunedZ3 = mtrFeasibilityPrunedZ3 a + mtrFeasibilityPrunedZ3 b
         , mtrFeasibilityPrunedTrivial = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
         , mtrFeasibilityPrunedAmountZ3 = mtrFeasibilityPrunedAmountZ3 a + mtrFeasibilityPrunedAmountZ3 b
+        , mtrFormulaLength = mtrFormulaLength a + mtrFormulaLength b
         , mtrFeasibilityPrunedAmountTrivial = mtrFeasibilityPrunedAmountTrivial a + mtrFeasibilityPrunedAmountTrivial b
         }
 

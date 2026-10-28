@@ -38,19 +38,26 @@ check size types e ts = do
     verbose <- asksConfig cfgVerbose
     k <- asksConfig cfgK
     q <- asksConfig cfgQ
-    rand <- getRandom::AppM Double
-    let prob = checkProb q k (length ts)
+    alwaysSimpleCheck <- asksConfig cfgAlwaysSimpleCheck
+    heuristic <- asksConfig cfgHeuristic
+
     predicate <- optimize $ wlpConj ts e
-    result <- if rand > prob
-        then fromMaybe True
-            <$> simpleCheck predicate
+
+    let prob = checkProb q k (length ts)
+    rand <- getRandom::AppM Double
+
+    result <- if heuristic && rand > prob
+        then if alwaysSimpleCheck
+            then fromMaybe True <$> simpleCheck predicate
+            else pure True
         else fromMaybe
             <$> (do
                 a <- liftIO $ z3CheckBool types predicate
                 addMetrics mempty {
                     mtrFeasibilityZ3 = 1,
                     mtrFeasibilityPrunedZ3 = fromBool (not a),
-                    mtrFeasibilityPrunedAmountZ3 = if (not a) then size else 0
+                    mtrFeasibilityPrunedAmountZ3 = if (not a) then size else 0,
+                    mtrFormulaLength = exprSize predicate
                 }
                 return a
             )

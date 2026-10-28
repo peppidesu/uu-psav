@@ -24,15 +24,16 @@ main = do
      inputs@(CLI {plength = k, conf = conf, gcl = gclPrograms, showHelp = showHelp'}) <- getPlain
      let config = Config {
          cfgVerbose=False,
-         cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
          cfgSimplifierChainTopBottom=True,
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
+         cfgAlwaysSimpleCheck=True,
+         cfgHeuristic=True,
          cfgK=k,
-         cfgQ=1
+         cfgQ=16
      }
      if inputs.showHelp
      then liftIO $ putStrLn usage

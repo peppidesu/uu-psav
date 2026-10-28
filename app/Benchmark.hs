@@ -64,13 +64,14 @@ allSettings :: Program -> Int -> [Benchmark]
 allSettings program k = [
   bench "settings=default" $ nfIO $ run program k (Config {
          cfgVerbose=False,
-         cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
          cfgSimplifierChainTopBottom=True,
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
+         cfgAlwaysSimpleCheck=True,
+         cfgHeuristic=True,
          cfgK=k,
          cfgQ=1
      })
@@ -80,13 +81,14 @@ bestSetting ::Program -> Int -> Benchmark
 bestSetting program k =
   bench "settings=best" $ nfIO $ run program k (Config {
          cfgVerbose=False,
-         cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
          cfgSimplifierChainTopBottom=True,
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
+         cfgAlwaysSimpleCheck=True,
+         cfgHeuristic=True,
          cfgK=k,
          cfgQ=1
      })
