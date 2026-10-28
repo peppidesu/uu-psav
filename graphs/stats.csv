@@ -1,4 +1,4 @@
-cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgK,mtrFeasibilityChecks,mtrFeasibilityTrivial,mtrFeasibilityPruned,mtrFeasibilityPrunedTrivial,fileName,nValue,wasValid
+cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgK,mtrFeasibilityChecks,mtrFeasibilityTrivial,mtrFeasibilityPruned,mtrFeasibilityPrunedTrivial,throwaway,fileName,nValue,wasValid
 False,True,True,True,True,True,True,True,30,27,8,8,8,,./examples/benchmark/mutants/bsort/bsort_M0_ROR_LT_LTE.gcl,2,False
 False,True,True,True,True,True,True,True,30,41,19,19,19,,./examples/benchmark/mutants/bsort/bsort_M0_ROR_LT_LTE.gcl,5,True
 False,True,True,True,True,True,True,True,30,43,23,23,23,,./examples/benchmark/mutants/bsort/bsort_M0_ROR_LT_LTE.gcl,10,True
