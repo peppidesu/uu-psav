@@ -3,6 +3,7 @@
 module SMT (
 Assignments,
 z3Check,
+z3CheckBool,
 getTypes,
 Types(..),
 VarTypes
@@ -180,6 +181,11 @@ getAssignments model map =
         Nothing ->
            return $ (name,"<unknown>")
 
+z3CheckBool :: VarTypes -> G.Expr -> IO Bool
+z3CheckBool types expr = evalZ3 $ do
+    (ast, _) <- runStateT (smtAST types expr) Map.empty
+    assert ast
+    (== Sat) <$> check
 
 z3Check :: VarTypes -> G.Expr -> IO (Maybe Assignments)
 z3Check types expr = evalZ3 $ z3Check' types expr

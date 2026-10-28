@@ -25,14 +25,14 @@ main = do
      let config = Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
-         cfgSimplifierEnabled=False,
+         cfgSimplifierEnabled=True,
          cfgSimplifierChainTopBottom=True,
          cfgSimplifierChainDedup=True,
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
          cfgK=k,
-         cfgQ=1
+         cfgQ=128
      }
      if inputs.showHelp
      then liftIO $ putStrLn usage

@@ -20,7 +20,8 @@ module Types (
     addMetrics,
     asksConfig,
     runApp,
-    treeSize
+    treeSize,
+    pathCount
 ) where
 
 import Data.Tree (Tree (..))
@@ -61,6 +62,10 @@ type PathTree = Tree Stmt
 treeSize :: PathTree -> Int
 treeSize (Node _ []) = 1
 treeSize (Node _ xs) = foldr (+) 1 (map treeSize xs)
+
+pathCount :: PathTree -> Int
+pathCount (Node _ []) = 1
+pathCount (Node _ xs) = sum (map treeSize xs)
 
 -- https://wiki.haskell.org/Catamorphisms
 data ExprF a

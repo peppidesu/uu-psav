@@ -24,7 +24,7 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          name = "pvas";
+          name = "psav";
           buildInputs = [
             hPkgs.ghc
             hPkgs.cabal-install
@@ -34,6 +34,16 @@
             pkgs.pkg-config
             pkgs.prism-model-checker
             pkgs.tinymist
+            pkgs.miller
+            pkgs.gnuplot
+          ];
+          packages = [
+            (pkgs.python3.withPackages (pc: with pc; [
+              pandas
+              numpy
+              scipy
+              matplotlib
+            ]))
           ];
         };
       });

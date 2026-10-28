@@ -4,7 +4,7 @@ import GCLParser.GCLDatatype (Expr(..), opAnd)
 import Data.Tree (Tree(..))
 import WLP(wlp')
 import Optimize (optimize)
-import SMT (VarTypes, z3Check)
+import SMT (VarTypes, z3Check, Assignments, z3CheckBool)
 import Data.Maybe (isJust, fromMaybe)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Extra (concatMapM, firstJustM)
@@ -44,12 +44,12 @@ check size types e ts = do
         then fromMaybe True
             <$> simpleCheck predicate
         else fromMaybe
-            <$> (liftIO (isJust <$> z3Check types predicate))
+            <$> (liftIO $ z3CheckBool types predicate)
             <*> (simpleCheck predicate)
     addMetrics mempty {
         mtrFeasibilityChecks = 1,
         mtrFeasibilityPruned = fromBool (not result),
-        mtrFeasibilityPrunedAmount = size * fromBool (not result)
+        mtrFeasibilityPrunedAmount = if not result then size else 0
     }
     pure $ if verbose then trace (unlines [
         "Feasibility: " ++ show predicate,
@@ -62,19 +62,18 @@ check size types e ts = do
             addMetrics mempty {
                 mtrFeasibilityTrivial = 1,
                 mtrFeasibilityPrunedTrivial = fromBool (not a),
-                mtrFeasibilityPrunedAmountTrivial = size * fromBool (not a)
+                mtrFeasibilityPrunedAmountTrivial = if not a then size else 0
             }
             pure $ Just a
         simpleCheck _ = pure Nothing
 
-
-findCounterExample :: VarTypes -> PathTree -> AppM (Maybe Expr)
+findCounterExample :: VarTypes -> PathTree -> AppM (Maybe Assignments)
 findCounterExample types = go [] id
     where
     -- k maps a leaf's base wlp to the full path wlp, accumulated from ancestors
-    go :: [Stmt] -> (Expr -> Expr) -> PathTree -> AppM (Maybe Expr)
+    go :: [Stmt] -> (Expr -> Expr) -> PathTree -> AppM (Maybe Assignments)
     go prefix k node@(Node (Assume e) []) = do
-        ok <- check (treeSize node) types e prefix
+        ok <- check (pathCount node) types e prefix
         if ok
             then verify types (k (wlp' (Assume e) (LitB True)))
             else pure Nothing
@@ -82,7 +81,7 @@ findCounterExample types = go [] id
     go _ k (Node x []) = verify types (k (wlp' x (LitB True)))
 
     go prefix k node@(Node (Assume e) ts) = do
-        ok <- check (treeSize node) types e prefix
+        ok <- check (pathCount node) types e prefix
         if ok
             then firstJustM (go (Assume e : prefix) (k . wlp' (Assume e))) ts
             else pure Nothing
@@ -90,6 +89,7 @@ findCounterExample types = go [] id
     go prefix k (Node x ts) = firstJustM (go (x : prefix) (k . wlp' x)) ts
 
     verify t e = do
-        opt <- optimize e                                    -- AppM Expr, as now
-        res <- liftIO (z3Check t (OpNeg opt))
-        pure (if isJust res then Just opt else Nothing)
+        opt <- optimize e
+        case opt of
+            LitB _ -> pure (Just $ [("x", "any")])
+            expr -> liftIO (z3Check t (OpNeg expr))

@@ -53,7 +53,7 @@ getMutantPaths :: IO ([(String, [String])])
 getMutantPaths =  do
   pss <- mapM listFiles mutantDirectories
   return $ zip mutantDirectories pss
-    where 
+    where
       mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
         "divByN",
         "memberOf",
@@ -106,7 +106,7 @@ defaultKValue = 4
 -- | Benches the directory of mutants. This function should be given the path of the directory, and a list of paths to files within that directory.
 benchDirectory :: (String, [String]) -> Benchmark
 benchDirectory (directory, paths) = bgroup (getName directory) (map (\p -> benchMutantPath p (getName p)) paths)
-  where 
+  where
     getName path = fromJust $ stripPrefix "./examples/benchmark/mutants" path
 
 -- | Benches the mutants as needed in the second experiment
