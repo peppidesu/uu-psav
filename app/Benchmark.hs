@@ -76,28 +76,61 @@ allSettings program k = [
      })
   ]
 
--- | The default N values ran by all benchmarks
+bestSetting ::Program -> Int -> Benchmark
+bestSetting program k =
+  bench "best setting" $ nfIO $ run program k (Config {
+         cfgVerbose=False,
+         cfgSimplifierIntConstFolding=True,
+         cfgSimplifierEnabled=True,
+         cfgSimplifierChainTopBottom=True,
+         cfgSimplifierChainDedup=True,
+         cfgSimplifierChainComparison=True,
+         cfgSimplifierChainAbsorb=True,
+         cfgSimplifierBoolConstFolding=True,
+         cfgK=k,
+         cfgQ=1
+     })
+
 defaultNValues :: [Int]
-defaultNValues = [10]--, 8, 16, 32]
+defaultNValues = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+defaultNValue :: Int
+defaultNValue = 10
 
 defaultKValues :: [Int]
-defaultKValues = [16, 32] --, 48]
+defaultKValues = [8, 16, 32, 64]
 
--- | Benches the directory. This function should be given the path of the directory, and a list of paths to files within that directory.
+defaultKValue :: Int
+defaultKValue = 4
+
+-- | Benches the directory of mutants. This function should be given the path of the directory, and a list of paths to files within that directory.
 benchDirectory :: (String, [String]) -> Benchmark
-benchDirectory (directory, paths) = bgroup (getName directory) (map (\p -> benchPath p (getName p)) paths)
+benchDirectory (directory, paths) = bgroup (getName directory) (map (\p -> benchMutantPath p (getName p)) paths)
   where 
     getName path = fromJust $ stripPrefix "./examples/benchmark/mutants" path
 
--- | Benches the program at the path, while using the given name. Runs on all the defaultNValues on all settings
+-- | Benches the mutants as needed in the second experiment
+benchMutantPath :: String -> String -> Benchmark
+benchMutantPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc ->
+    benchMutantProgram name parseFunc
+
+-- | Benches on the default k values, with all the n values
+benchMutantProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
+benchMutantProgram name prog =  bgroup name $
+  map (\n -> mkGroup defaultKValue n) defaultNValues
+  where
+      mkGroup k n = env (prog (Just n)) $ \program ->
+          bgroup ("N = " ++ show n ++ ", K = " ++ show k) $ [bestSetting program k]
+
+-- | Benches the program at the path, while using the given name, as needed with the first experiment
 benchPath :: String -> String -> Benchmark
 benchPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc ->
     benchProgram name parseFunc
 
--- | Benches on all defaultNValues
+-- | Benches on all default k values, with the single n value
 benchProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
 benchProgram name prog =  bgroup name $
-  concatMap (\k -> map (mkGroup k) defaultNValues) defaultKValues
+  map (\k -> mkGroup k defaultNValue) defaultKValues
   where
       mkGroup k n = env (prog (Just n)) $ \program ->
           bgroup ("N = " ++ show n ++ ", K = " ++ show k) $ allSettings program k
