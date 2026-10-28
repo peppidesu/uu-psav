@@ -136,17 +136,18 @@ createCsvLine statistic =
     ++ show (cfgSimplifierChainDedup statistic)       ++ ","
     ++ show (cfgSimplifierChainTopBottom statistic)   ++ ","
     ++ show (cfgSimplifierChainComparison statistic)  ++ ","
+    ++ show (cfgQ statistic)  ++ ","
     ++ show (cfgK statistic)
   createMetricPart statistic = let metric = metrics statistic in
        show (mtrFeasibilityChecks metric)        ++ ","
     ++ show (mtrFeasibilityTrivial metric)       ++ ","
     ++ show (mtrFeasibilityPruned metric)        ++ ","
-    ++ show (mtrFeasibilityPrunedTrivial metric) ++ ","
+    ++ show (mtrFeasibilityPrunedTrivial metric)
 
 csvHeader :: String
 csvHeader = configcsvHeader ++ "," ++ metricscsvHeader ++ "," ++"fileName,nValue,wasValid"
   where
-    configcsvHeader = "cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgK"
+    configcsvHeader = "cfgVerbose,cfgSimplifierEnabled,cfgSimplifierIntConstFolding,cfgSimplifierBoolConstFolding,cfgSimplifierChainAbsorb,cfgSimplifierChainDedup,cfgSimplifierChainTopBottom,cfgSimplifierChainComparison,cfgQ,cfgK"
     metricscsvHeader = "mtrFeasibilityChecks,mtrFeasibilityTrivial,mtrFeasibilityPruned,mtrFeasibilityPrunedTrivial"
 
 -- Tests
