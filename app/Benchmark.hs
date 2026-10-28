@@ -31,7 +31,7 @@ main = do
   mutants <- getMutantPaths
 
   defaultMain [
-    bgroup "regular"[
+    bgroup "experiment=1"[
       benchPath "./examples/benchmark/bsort.gcl"           "bsort"
     , benchPath "./examples/benchmark/divByN.gcl"          "divByN"
     -- , benchPath "./examples/benchmark/find12.gcl"          "find12"
@@ -45,7 +45,7 @@ main = do
     -- , benchPath "./examples/benchmark/min.gcl"             "min"
     , benchPath "./examples/benchmark/pullUp.gcl"          "pullUp"
     ],
-    bgroup "mutants" (map benchDirectory mutants)
+    bgroup "experiment=2" (map benchDirectory mutants)
     ]
 
 -- | Gets a list of tuples, with (mutantDirectory, [MutantPaths])
@@ -62,7 +62,7 @@ getMutantPaths =  do
 -- | Runs the given program, with the given N value, on all settings
 allSettings :: Program -> Int -> [Benchmark]
 allSettings program k = [
-  bench "default settings" $ nfIO $ run program k (Config {
+  bench "settings=default" $ nfIO $ run program k (Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
@@ -78,7 +78,7 @@ allSettings program k = [
 
 bestSetting ::Program -> Int -> Benchmark
 bestSetting program k =
-  bench "best setting" $ nfIO $ run program k (Config {
+  bench "settings=best" $ nfIO $ run program k (Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
@@ -92,16 +92,16 @@ bestSetting program k =
      })
 
 defaultNValues :: [Int]
-defaultNValues = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+defaultNValues = [1] --[2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 defaultNValue :: Int
-defaultNValue = 10
+defaultNValue = 1 --10
 
 defaultKValues :: [Int]
-defaultKValues = [8, 16, 32, 64]
+defaultKValues = [1]--[8, 16, 32, 64]
 
 defaultKValue :: Int
-defaultKValue = 4
+defaultKValue = 1--4
 
 -- | Benches the directory of mutants. This function should be given the path of the directory, and a list of paths to files within that directory.
 benchDirectory :: (String, [String]) -> Benchmark
@@ -116,11 +116,11 @@ benchMutantPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parse
 
 -- | Benches on the default k values, with all the n values
 benchMutantProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
-benchMutantProgram name prog =  bgroup name $
+benchMutantProgram name prog =  bgroup ("name=" ++ name) $
   map (\n -> mkGroup defaultKValue n) defaultNValues
   where
       mkGroup k n = env (prog (Just n)) $ \program ->
-          bgroup ("N = " ++ show n ++ ", K = " ++ show k) $ [bestSetting program k]
+          bgroup ("N=" ++ show n ++ ", K=" ++ show k) $ [bestSetting program k]
 
 -- | Benches the program at the path, while using the given name, as needed with the first experiment
 benchPath :: String -> String -> Benchmark
@@ -129,11 +129,11 @@ benchPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc -
 
 -- | Benches on all default k values, with the single n value
 benchProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
-benchProgram name prog =  bgroup name $
+benchProgram name prog =  bgroup ("name=" ++ name) $
   map (\k -> mkGroup k defaultNValue) defaultKValues
   where
       mkGroup k n = env (prog (Just n)) $ \program ->
-          bgroup ("N = " ++ show n ++ ", K = " ++ show k) $ allSettings program k
+          bgroup ("N=" ++ show n ++ ",K=" ++ show k) $ allSettings program k
 
 run :: G.Program -> Int -> Config -> IO ()
 run prog' k config = do
