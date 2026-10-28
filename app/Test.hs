@@ -140,9 +140,10 @@ createCsvLine statistic =
     ++ show (cfgK statistic)
   createMetricPart statistic = let metric = metrics statistic in
        show (mtrFeasibilityChecks metric)        ++ ","
+    ++ show (mtrFeasibilityZ3 metric)        ++ ","
     ++ show (mtrFeasibilityTrivial metric)       ++ ","
-    ++ show (mtrFeasibilityPruned metric)        ++ ","
-    ++ show (mtrFeasibilityPrunedTrivial metric)
+    ++ show (mtrFeasibilityPrunedZ3 metric)        ++ ","
+    ++ show (mtrFeasibilityPrunedTrivial metric) ++ ","
 
 csvHeader :: String
 csvHeader = configcsvHeader ++ "," ++ metricscsvHeader ++ "," ++"fileName,nValue,wasValid"

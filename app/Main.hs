@@ -32,7 +32,7 @@ main = do
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
          cfgK=k,
-         cfgQ=128
+         cfgQ=1
      }
      if inputs.showHelp
      then liftIO $ putStrLn usage
