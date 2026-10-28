@@ -31,36 +31,41 @@ data Statistic = Statistic {
   wasValid :: Bool
 } deriving (Generic, Show)
 
+data RunMethod = FirstExperiment | SecondExperiment
+
 bigFunc :: IO ()
 bigFunc = do
-  testPaths <- getTestPaths
-  generateStatisticsFile testPaths
+  let benchTestPaths = ["./examples/benchmark/divByN.gcl", "./examples/benchmark/invalidDivByN.gcl", "./examples/benchmark/invalidMemberOf.gcl", "./examples/benchmark/invalidPullUp.gcl", "./examples/benchmark/memberOf.gcl", "./examples/benchmark/pullUp.gcl"]
+  generateStatisticsFile FirstExperiment "./statsExperiment1.csv" benchTestPaths
+  mutantTestPaths <- getMutantTestPaths
+  generateStatisticsFile SecondExperiment "./statsExperiment2.csv" mutantTestPaths
   where
-    getTestPaths :: IO ([String])
-    getTestPaths = do
+    getMutantTestPaths :: IO ([String])
+    getMutantTestPaths = do
       mutants <- concatMapM listFiles mutantDirectories
       -- TODO: add more
       return mutants
 
 
-generateStatisticsFile :: [String] -> IO ()
-generateStatisticsFile paths = do
-  statistics <- collectStatistics paths
-  let saveLocation = "./test.csv"
+generateStatisticsFile :: RunMethod -> String -> [String] -> IO ()
+generateStatisticsFile runMeth path paths = do
+  statistics <- collectStatistics runMeth paths
+  let saveLocation = path
   createStatisticFile saveLocation statistics
 
 -- Statistics collection
 
-collectStatistics :: [String] -> IO ([Statistic])
-collectStatistics paths = concatMapM collectStatisticsWithPath paths
+collectStatistics :: RunMethod ->[String] -> IO ([Statistic])
+collectStatistics runMeth paths = concatMapM (collectStatisticsWithPath runMeth) paths
 
-collectStatisticsWithPath :: String -> IO ([Statistic])
-collectStatisticsWithPath path = do mapM (collectStatistic' path) defaultToTest
-  where
-    collectStatistic' path (n, config) = do
-      program <- parseGCLfileWithMaybeN path (Just $ n)
-      (metric, runResult) <- runCollectMetricAndBool program (cfgK config) config
-      return Statistic{config = config, metrics = metric, fileName = path, nValue = n, wasValid = runResult }
+collectStatisticsWithPath :: RunMethod -> String -> IO ([Statistic])
+collectStatisticsWithPath FirstExperiment  path = do mapM (collectStatistic' path) benchToTest
+collectStatisticsWithPath SecondExperiment path = do mapM (collectStatistic' path) mutantToTest
+
+collectStatistic' path (n, config) = do
+  program <- parseGCLfileWithMaybeN path (Just $ n)
+  (metric, runResult) <- runCollectMetricAndBool program (cfgK config) config
+  return Statistic{config = config, metrics = metric, fileName = path, nValue = n, wasValid = runResult }
 
 runCollectMetricAndBool :: G.Program -> Int -> Config -> IO ((Metrics, Bool))
 runCollectMetricAndBool prog' k config = do
@@ -77,10 +82,12 @@ runCollectMetricAndBool prog' k config = do
 -- Configuration
 
 allNValues :: [Int]
-allNValues = [2, 5, 10]
+allNValues = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-allConfigs :: [Config]
-allConfigs = [Config {
+allKValues = [8, 16, 32, 64]
+
+allConfigs :: Int -> [Config]
+allConfigs k = [Config {
          cfgVerbose=False,
          cfgSimplifierIntConstFolding=True,
          cfgSimplifierEnabled=True,
@@ -89,12 +96,22 @@ allConfigs = [Config {
          cfgSimplifierChainComparison=True,
          cfgSimplifierChainAbsorb=True,
          cfgSimplifierBoolConstFolding=True,
-         cfgK=30,
+         cfgK=k,
          cfgQ=1
      }]
 
-defaultToTest :: [(Int, Config)]
-defaultToTest = [ (y,x) | x<-allConfigs, y<-allNValues ]
+bestConfig :: Config
+-- TODO: replace with our best config
+bestConfig = error "add best config to code or comment out the running of the mutants"
+
+mutantToTest :: [(Int, Config)]
+mutantToTest = [(x, bestConfig)| x <- allNValues]
+
+benchToTest :: [(Int, Config)]
+benchToTest = [(10, c)| c <- concatMap allConfigs allKValues]
+
+-- defaultToTest :: [(Int, Config)]
+-- defaultToTest = [ (y,x) | x<-allConfigs, y<-allNValues ]
 
 -- To csv
 createStatisticFile :: String -> [Statistic] -> IO ()
