@@ -1,0 +1,62 @@
+* EXPECTED FORMATS
+Order of columns is not relevant
+
+** Experiment 1
+*** <name>ProcBench1.csv
+Columns:
+- mean
+- meanLB
+- meanUB
+- stddev
+- stddevLB
+- stddevUB
+- K
+- Q
+- name
+- file
+
+*** <name>ProcStats1.csv
+- K
+- Q
+- config
+- name
+- file
+- mtrFeasibilityChecks
+- mtrFeasibilityZ3
+- mtrFeasibilityTrivial
+- mtrFeasibilityPrunedZ3
+- mtrFeasibilityPrunedTrivial
+- mtrFeasibilityPrunedAmountZ3
+- mtrFeasibilityPrunedAmountTrivial
+- mtrFormulaLength
+
+** Experiment 2
+*** <name>ProcBench2.csv
+Columns:
+- mean
+- meanLB
+- meanUB
+- stddev
+- stddevLB
+- stddevUB
+- N
+- Q
+- name
+- file
+- runGroup
+
+*** <name>ProcStats2.csv
+- N
+- Q
+- config
+- name
+- file
+- mtrFeasibilityChecks
+- mtrFeasibilityZ3
+- mtrFeasibilityTrivial
+- mtrFeasibilityPrunedZ3
+- mtrFeasibilityPrunedTrivial
+- mtrFeasibilityPrunedAmountZ3
+- mtrFeasibilityPrunedAmountTrivial
+- mtrFormulaLength
+- wasValid

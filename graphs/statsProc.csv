@@ -1,3 +1,0 @@
-cfg,mtrFeasibilityPruned_median,mtrFeasibilityPruned_p25,mtrFeasibilityPruned_p75,mtrFeasibilityPruned_mean,mtrFeasibilityPruned_stddev,mtrFeasibilityPruned_meaneb,mtrFeasibilityPruned_min,mtrFeasibilityPruned_max,mtrFeasibilityPruned_skewness
-simplifier enabled,13,5,23,18.136150234741784,18.18628080828239,1.246103428358821,0,66,1.577373859561561
-simplifier disabled,13,5,23,18.136150234741784,18.18628080828239,1.246103428358821,0,66,1.577373859561561
