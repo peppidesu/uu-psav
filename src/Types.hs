@@ -20,8 +20,8 @@ module Types (
     addMetrics,
     asksConfig,
     runApp,
-    treeSize,
-    pathCount
+    pathCount,
+    exprSize,
 ) where
 
 import Data.Tree (Tree (..))
@@ -36,7 +36,7 @@ import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
 import Control.Monad.State.Lazy (MonadState (..), StateT, runStateT, modify)
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time (getCurrentTime, diffUTCTime)
-import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT)
+import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT, initStdGen, evalRand, random)
 import GHC.Generics (Generic)
 
 data Stmt
@@ -53,19 +53,23 @@ instance Show Stmt where
     show (Assign ident e)       = ident ++ " := " ++ show e
     show (AAssign ident i e)    = ident ++ "[" ++ show i ++ "]" ++ " := " ++ show e
 
+exprSize :: Expr -> Int
+exprSize = cata $ \case
+    VarF _ -> 1
+    LitBF _ -> 1
+    LitIF _ -> 1
+    LitNullF -> 1
+    DereferenceF _ -> 1
+    e -> foldr (+) 0 e
 
 -- |Tree of program paths. Each node is a statement, and its children
 -- are next statements that can be executed. Exploring to a leaf node produces
 -- a program path.
 type PathTree = Tree Stmt
 
-treeSize :: PathTree -> Int
-treeSize (Node _ []) = 1
-treeSize (Node _ xs) = foldr (+) 1 (map treeSize xs)
-
 pathCount :: PathTree -> Int
 pathCount (Node _ []) = 1
-pathCount (Node _ xs) = sum (map treeSize xs)
+pathCount (Node _ xs) = sum (map pathCount xs)
 
 -- https://wiki.haskell.org/Catamorphisms
 data ExprF a
@@ -150,12 +154,13 @@ foldExpr = cata
 data Config = Config
     { cfgVerbose     :: !Bool
     , cfgSimplifierEnabled :: !Bool
-    , cfgSimplifierIntConstFolding :: !Bool
     , cfgSimplifierBoolConstFolding :: !Bool
     , cfgSimplifierChainAbsorb :: !Bool
     , cfgSimplifierChainDedup :: !Bool
     , cfgSimplifierChainTopBottom :: !Bool
     , cfgSimplifierChainComparison :: !Bool
+    , cfgAlwaysSimpleCheck :: !Bool
+    , cfgHeuristic :: !Bool
     , cfgK :: !Int
     , cfgQ :: !Double
     }
@@ -182,7 +187,9 @@ newtype AppM a = AppM {unAppM ::
 
 -- | Run the app, returning both the result and the collected metrics.
 runApp :: Config -> AppM a -> IO (a, Metrics)
-runApp cfg (AppM m) = evalRandT (runStateT (runReaderT m cfg) emptyMetrics) (mkStdGen 42)
+runApp cfg (AppM m) = do
+    rng <- initStdGen
+    evalRandT (runStateT (runReaderT m cfg) emptyMetrics) rng
 
 -- | Run the app and discard the metrics.
 runApp_ :: Config -> AppM a -> IO a
@@ -190,17 +197,20 @@ runApp_ cfg app = fst <$> runApp cfg app
 
 
 data Metrics = Metrics
-    { mtrFeasibilityChecks :: !Int
+    {
+      mtrFeasibilityChecks :: !Int
+    , mtrFeasibilityZ3 :: !Int
     , mtrFeasibilityTrivial :: !Int
-    , mtrFeasibilityPruned :: !Int
+    , mtrFeasibilityPrunedZ3 :: !Int
     , mtrFeasibilityPrunedTrivial :: !Int
-    , mtrFeasibilityPrunedAmount :: !Int
+    , mtrFormulaLength :: !Int
+    , mtrFeasibilityPrunedAmountZ3 :: !Int
     , mtrFeasibilityPrunedAmountTrivial :: !Int
     }
     deriving stock (Show, Eq)
 
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0 0 0 0 0
 
 addMetrics :: Metrics -> AppM ()
 addMetrics m = modify (<> m)
@@ -209,10 +219,12 @@ addMetrics m = modify (<> m)
 instance Semigroup Metrics where
     a <> b = Metrics
         { mtrFeasibilityChecks = mtrFeasibilityChecks a + mtrFeasibilityChecks b
-        , mtrFeasibilityPruned = mtrFeasibilityPruned a   + mtrFeasibilityPruned b
-        , mtrFeasibilityTrivial = mtrFeasibilityTrivial a    + mtrFeasibilityTrivial b
+        , mtrFeasibilityZ3 = mtrFeasibilityZ3 a + mtrFeasibilityZ3 b
+        , mtrFeasibilityTrivial = mtrFeasibilityTrivial a + mtrFeasibilityTrivial b
+        , mtrFeasibilityPrunedZ3 = mtrFeasibilityPrunedZ3 a + mtrFeasibilityPrunedZ3 b
         , mtrFeasibilityPrunedTrivial = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
-        , mtrFeasibilityPrunedAmount = mtrFeasibilityPrunedAmount a + mtrFeasibilityPrunedAmount b
+        , mtrFeasibilityPrunedAmountZ3 = mtrFeasibilityPrunedAmountZ3 a + mtrFeasibilityPrunedAmountZ3 b
+        , mtrFormulaLength = mtrFormulaLength a + mtrFormulaLength b
         , mtrFeasibilityPrunedAmountTrivial = mtrFeasibilityPrunedAmountTrivial a + mtrFeasibilityPrunedAmountTrivial b
         }
 

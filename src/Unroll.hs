@@ -44,7 +44,7 @@ unroll (G.Block vardecls s)     = unroll s
 unroll _                        = [pure $ Skip]
 
 -- unroll produces a lazy infinite tree, so it needs to be truncated first.
-truncatePaths :: Integer -> PathTree -> Maybe (PathTree)
+truncatePaths :: Int -> PathTree -> Maybe (PathTree)
 truncatePaths _ node@(Node _ []) = Just node
 truncatePaths k (Node x ts)
     | k <= 0    = Nothing -- max depth reached -> prune
@@ -52,5 +52,5 @@ truncatePaths k (Node x ts)
         []  -> Nothing -- all successors truncated, path cannot terminate -> prune
         ts' -> Just (Node x ts') -- terminating successors -> don't prune
 
-unrollUntil :: Integer -> G.Stmt -> [PathTree]
+unrollUntil :: Int -> G.Stmt -> [PathTree]
 unrollUntil n = mapMaybe (truncatePaths n) . unroll

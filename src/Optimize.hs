@@ -247,16 +247,6 @@ step = do
         Cond c _ e2 | c == B False  -> Just e2
         ---------------------------------------------------------------------------
 
-        (e :- I a) :< e2  | e == e2 -> Just $ B (a > 0)
-        (e :- I a) :<= e2 | e == e2 -> Just $ B (a >= 0)
-        (e :- I a) :== e2 | e == e2 -> Just $ B (a == 0)
-        (e :+ I a) :< e2  | e == e2 -> Just $ B (a < 0)
-        (e :+ I a) :<= e2 | e == e2 -> Just $ B (a <= 0)
-        (e :+ I a) :== e2 | e == e2 -> Just $ B (a == 0)
-
-        (e1 :- I a) :== (e2 :- I b) | e1 == e2 -> Just $ B $ a == b
-        (e1 :+ I a) :== (e2 :+ I b) | e1 == e2 -> Just $ B $ a == b
-
         e1 :< e2 | e1 == e2 -> Just $ B False
         e1 :<= e2 | e1 == e2 -> Just $ B True
         e1 :== e2 | e1 == e2 -> Just $ B True
