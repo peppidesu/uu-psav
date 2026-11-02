@@ -152,6 +152,7 @@ library
                   , Feasibility
                   , ShadowElimination
                   , Parse
+                  , Experiments
 
    other-modules: Z3Conf
 
