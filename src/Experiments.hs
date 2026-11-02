@@ -105,15 +105,15 @@ experiments = concat [
     completenessExperiments "./examples/benchmark/invalidMemberOf.gcl"  70 2.0,
     completenessExperiments "./examples/benchmark/invalidPullUp.gcl"    70 2.0,
 
-    performanceExperimentsSlow "./examples/benchmark/invalidDivByN.gcl"    [k * 10 | k <- [1..8]]  2.0,
-    performanceExperimentsSlow "./examples/benchmark/invalidMemberOf.gcl"  [k * 10 | k <- [1..5]]  2.0,
-    performanceExperimentsSlow "./examples/benchmark/invalidPullUp.gcl"    [k * 10 | k <- [1..5]]  2.0,
+    performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..8]]  2.0,
+    performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..5]]  2.0,
+    performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..5]]  2.0,
 
-    performanceExperimentsFast "./examples/benchmark/invalidDivByN.gcl"    [k * 10 | k <- [1..10]] 2.0,
-    performanceExperimentsFast "./examples/benchmark/invalidMemberOf.gcl"  [k * 10 | k <- [1..7]]  2.0,
-    performanceExperimentsFast "./examples/benchmark/invalidPullUp.gcl"    [k * 10 | k <- [1..7]]  2.0,
+    performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..10]] 2.0,
+    performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..7]]  2.0,
+    performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..7]]  2.0,
 
-    performanceExperimentsQ "./examples/benchmark/invalidDivByN.gcl"       50 [-1, 0, 1, 2, 4, 8, 16],
-    performanceExperimentsQ "./examples/benchmark/invalidMemberOf.gcl"     50 [-1, 0, 1, 2, 4, 8, 16],
-    performanceExperimentsQ "./examples/benchmark/invalidPullUp.gcl"       50 [-1, 0, 1, 2, 4, 8, 16]
+    performanceExperimentsQ "./examples/benchmark/divByN.gcl"       50 [-1, 0, 1, 2, 4, 8, 16],
+    performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     50 [-1, 0, 1, 2, 4, 8, 16],
+    performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       50 [-1, 0, 1, 2, 4, 8, 16]
  ]
