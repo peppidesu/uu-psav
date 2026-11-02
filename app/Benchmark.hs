@@ -20,6 +20,8 @@ import Types
 import Control.Monad.IO.Class
 import Parse (parseGCLfileWithMaybeN)
 import System.Directory.Extra (listFiles)
+import Experiments 
+import Criterion.Types (Benchmark(Benchmark))
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the
 -- file program is defined in, so there is an instance declaration here.
@@ -31,22 +33,17 @@ main = do
   mutants <- getMutantPaths
 
   defaultMain [
-    bgroup "experiment=1"[
-      benchPath "./examples/benchmark/bsort.gcl"           "bsort"
-    , benchPath "./examples/benchmark/divByN.gcl"          "divByN"
-    -- , benchPath "./examples/benchmark/find12.gcl"          "find12"
-    , benchPath "./examples/benchmark/invalidBsort.gcl"    "invalidBsort"
-    , benchPath "./examples/benchmark/invalidDivByN.gcl"   "invalidDivByN"
-    -- , benchPath "./examples/benchmark/invalidFind12.gcl"   "invalidFind12"
-    , benchPath "./examples/benchmark/invalidMemberOf.gcl" "invalidMemberOf"
-    -- , benchPath "./examples/benchmark/invalidMin.gcl"      "invalidMin"
-    , benchPath "./examples/benchmark/invalidPullUp.gcl"   "invalidPullUp"
-    , benchPath "./examples/benchmark/memberOf.gcl"        "memberOf"
-    -- , benchPath "./examples/benchmark/min.gcl"             "min"
-    , benchPath "./examples/benchmark/pullUp.gcl"          "pullUp"
-    ],
+    bgroup "experiment=1" (makeBenchMarks experiments),
     bgroup "experiment=2" (map benchDirectory mutants)
     ]
+
+makeBenchMarks :: [Experiment] -> [Benchmark]
+makeBenchMarks experiments = map make experiments
+  where 
+    make :: Experiment -> Benchmark
+    make (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
+      bench name $ nfIO $ run program (cfgK cfg) cfg
+
 
 -- | Gets a list of tuples, with (mutantDirectory, [MutantPaths])
 getMutantPaths :: IO ([(String, [String])])
