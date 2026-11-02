@@ -97,8 +97,8 @@ instance DefaultOrdered Statistic where
 
 generateStatistics :: IO ()
 generateStatistics = do
-    -- let experiments = performanceExperimentsAll
-    experiments <- experimentsMutants
+    let experiments = performanceExperimentsAll
+    -- experiments <- experimentsMutants
 
     statistics <- mapM runExperiment experiments
     putStrLn "writing file..."
@@ -142,24 +142,13 @@ createTestTree (name, toTest) =
       prog <- parseGCLfileWithMaybeN p (Just n)
       fst <$> runBool prog config
 
-getTestPathsPerDir :: IO [(String,[(String, Int)])]
-getTestPathsPerDir = do
-  pss <- mapM listFiles mutantDirectories
-  return $ zip mutantDirectories (map (\ps -> map (\p -> (p, 6)) ps) pss)
-
-mutantDirectories :: [String]
-mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
-  "divByN",
-  "memberOf",
-  "pullUp"]
-
 runExperiment :: Experiment -> IO (Statistic)
 runExperiment (Experiment name file cfg n) = do
     putStrLn $ "Running experiment:" ++ name ++ ['\n']
         ++ "  file: " ++ file ++ ['\n']
         ++ "  n = " ++ show n ++ ", k = " ++ show (cfgK cfg) ++ ", q = " ++ show (cfgQ cfg)
     prog <- parseGCLfileWithMaybeN file (Just n)
-    results <- mapM (const $ runBool prog cfg) [1..10]
+    results <- mapM (const $ runBool prog cfg) [1..5]
     let (wasValid, metrics) = unzip results
     let (metricsMean, metricsStd) = toMetricsAvStd $ metrics
 

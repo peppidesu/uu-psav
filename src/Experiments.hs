@@ -77,21 +77,19 @@ withNKQ ns ks qs e
 
 performanceExperimentsSlow :: String -> [Int] -> Double -> [Experiment]
 performanceExperimentsSlow file ks q = concat [
-    (withNKQ [10] ks [q]) $ configHeuristicOff      $ configSimplifierNone  $ baseExperiment "perf" file,
     (withNKQ [10] ks [q]) $ configHeuristicOff      $ configSimplifierBasic $ baseExperiment "perf" file,
+    (withNKQ [10] ks [q]) $ configHeuristicOff      $ configSimplifierNone  $ baseExperiment "perf" file,
     (withNKQ [10] ks [q]) $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file
  ]
 performanceExperimentsFast :: String -> [Int] -> Double -> [Experiment]
 performanceExperimentsFast file ks q = concat [
-    (withNKQ [10] ks [q]) $ configHeuristicOff      $ configSimplifierFull  $ baseExperiment "perf" file,
+    (withNKQ [10] ks [q]) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file,
     (withNKQ [10] ks [q]) $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [q]) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
+    (withNKQ [10] ks [q]) $ configHeuristicOff      $ configSimplifierFull  $ baseExperiment "perf" file
  ]
 
 performanceExperimentsQ :: String -> Int -> [Double] -> [Experiment]
 performanceExperimentsQ file k qs = concat [
-    (withNKQ [10] [k] qs) $ configHeuristicOff      $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] [k] qs) $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
     (withNKQ [10] [k] qs) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
  ]
 
@@ -122,18 +120,16 @@ experimentsMutants = do
 
 performanceExperimentsAll :: [Experiment]
 performanceExperimentsAll
-    = sortOn (\(Experiment _ _ cfg _) -> cfgK cfg)
-    $ sortOn (\(Experiment _ _ cfg _) -> cfgQ cfg)
-    $ concat [
-    performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..8]]  8.0,
-    performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..5]]  2.0,
-    performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..5]]  2.0,
+    = concat [
+        performanceExperimentsQ "./examples/benchmark/divByN.gcl"       80 [-1, 0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     70 [-1, 0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       70 [-1, 0, 1, 2, 4, 8, 16],
 
-    performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..10]] 8.0,
-    performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..7]]  2.0,
-    performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..7]]  2.0,
+        performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..10]] 8.0,
+        performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..7]]  1.0,
+        performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..7]]  1.0,
 
-    performanceExperimentsQ "./examples/benchmark/divByN.gcl"       80 [-1, 0, 1, 2, 4, 8, 16],
-    performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     80 [-1, 0, 1, 2, 4, 8, 16],
-    performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       80 [-1, 0, 1, 2, 4, 8, 16]
- ]
+        performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..8]]  8.0,
+        performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..5]]  1.0,
+        performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..5]]  1.0
+    ]
