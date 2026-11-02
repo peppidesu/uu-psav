@@ -9,7 +9,7 @@ import Feasibility (findCounterExample)
 import Optimize (optimize)
 import SMT (z3Check)
 import Control.Monad.Extra (firstJustM, when, concatMapM)
-import GCLParser.GCLDatatype as G
+import GCLParser.GCLDatatype as G ( Program(stmt) )
 import GCLParser.Parser (parseGCLfile)
 import Control.DeepSeq
 import GHC.Generics (Generic)
@@ -20,7 +20,7 @@ import Types
 import Control.Monad.IO.Class
 import Parse (parseGCLfileWithMaybeN)
 import System.Directory.Extra (listFiles)
-import Experiments
+import Experiments 
 import Criterion.Types (Benchmark(Benchmark))
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the
@@ -30,109 +30,19 @@ instance NFData Program where rnf x = seq x ()
 
 main :: IO ()
 main = do
-  mutants <- getMutantPaths
-
+  secondExperiments <- experimentsMutants
   defaultMain [
-    bgroup "experiment=1" (makeBenchMarks experiments),
-    bgroup "experiment=2" (map benchDirectory mutants)
+    bgroup "experiment=1" (makeBenchMarks performanceExperimentsAll 1)
+    -- , bgroup "experiment=2" (makeBenchMarks secondExperiments 2)
     ]
 
-makeBenchMarks :: [Experiment] -> [Benchmark]
-makeBenchMarks experiments = map make experiments
-  where
-    make :: Experiment -> Benchmark
-    make (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
-      bench name $ nfIO $ run program (cfgK cfg) cfg
-
-
--- | Gets a list of tuples, with (mutantDirectory, [MutantPaths])
-getMutantPaths :: IO ([(String, [String])])
-getMutantPaths =  do
-  pss <- mapM listFiles mutantDirectories
-  return $ zip mutantDirectories pss
-    where
-      mutantDirectories = map (\p -> "./examples/benchmark/mutants/" ++ p) [
-        "divByN",
-        "memberOf",
-        "pullUp"]
-
--- | Runs the given program, with the given N value, on all settings
-allSettings :: Program -> Int -> [Benchmark]
-allSettings program k = [
-  bench "settings=default" $ nfIO $ run program k (Config {
-         cfgVerbose=False,
-         cfgSimplifierEnabled=True,
-         cfgSimplifierChainTopBottom=True,
-         cfgSimplifierChainDedup=True,
-         cfgSimplifierChainComparison=True,
-         cfgSimplifierChainAbsorb=True,
-         cfgSimplifierBoolConstFolding=True,
-         cfgAlwaysSimpleCheck=True,
-         cfgHeuristic=True,
-         cfgK=k,
-         cfgQ=1
-     })
-  ]
-
-bestSetting ::Program -> Int -> Benchmark
-bestSetting program k =
-  bench "settings=best" $ nfIO $ run program k (Config {
-         cfgVerbose=False,
-         cfgSimplifierEnabled=True,
-         cfgSimplifierChainTopBottom=True,
-         cfgSimplifierChainDedup=True,
-         cfgSimplifierChainComparison=True,
-         cfgSimplifierChainAbsorb=True,
-         cfgSimplifierBoolConstFolding=True,
-         cfgAlwaysSimpleCheck=True,
-         cfgHeuristic=True,
-         cfgK=k,
-         cfgQ=1
-     })
-
-defaultNValues :: [Int]
-defaultNValues = [1] --[2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-defaultNValue :: Int
-defaultNValue = 1 --10
-
-defaultKValues :: [Int]
-defaultKValues = [1]--[8, 16, 32, 64]
-
-defaultKValue :: Int
-defaultKValue = 1--4
-
--- | Benches the directory of mutants. This function should be given the path of the directory, and a list of paths to files within that directory.
-benchDirectory :: (String, [String]) -> Benchmark
-benchDirectory (directory, paths) = bgroup (getName directory) (map (\p -> benchMutantPath p (getName p)) paths)
-  where
-    getName path = fromJust $ stripPrefix "./examples/benchmark/mutants" path
-
--- | Benches the mutants as needed in the second experiment
-benchMutantPath :: String -> String -> Benchmark
-benchMutantPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc ->
-    benchMutantProgram name parseFunc
-
--- | Benches on the default k values, with all the n values
-benchMutantProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
-benchMutantProgram name prog =  bgroup ("name=" ++ name) $
-  map (\n -> mkGroup defaultKValue n) defaultNValues
-  where
-      mkGroup k n = env (prog (Just n)) $ \program ->
-          bgroup ("N=" ++ show n ++ ", K=" ++ show k) $ [bestSetting program k]
-
--- | Benches the program at the path, while using the given name, as needed with the first experiment
-benchPath :: String -> String -> Benchmark
-benchPath path name = env (return $ parseGCLfileWithMaybeN path ) $ \parseFunc ->
-    benchProgram name parseFunc
-
--- | Benches on all default k values, with the single n value
-benchProgram :: String -> (Maybe Int -> IO (Program)) -> Benchmark
-benchProgram name prog =  bgroup ("name=" ++ name) $
-  map (\k -> mkGroup k defaultNValue) defaultKValues
-  where
-      mkGroup k n = env (prog (Just n)) $ \program ->
-          bgroup ("N=" ++ show n ++ ",K=" ++ show k) $ allSettings program k
+makeBenchMarks :: [Experiment] -> Int -> [Benchmark]
+makeBenchMarks experiments expNum = map (make expNum) experiments
+  where 
+    make :: Int -> Experiment -> Benchmark
+    make expNum (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
+      bench (createName name file cfg n expNum) $ nfIO $ run program (cfgK cfg) cfg
+    createName name file cfg n expNum = "Name=" ++ name ++ ",File=" ++ file ++ ",N=" ++ show n ++ ",K=" ++ show (cfgK cfg) ++ ",Q=" ++ show (cfgQ cfg) ++ ",Experiment=" ++ show expNum
 
 run :: G.Program -> Int -> Config -> IO ()
 run prog' k config = do
