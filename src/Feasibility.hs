@@ -104,6 +104,9 @@ findCounterExample types = go [] id
 
     verify t e = do
         opt <- optimize e
+        addMetrics mempty {
+            mtrPathsInspected = 1
+        }
         case opt of
             LitB _ -> pure (Just $ [("x", "any")])
             expr -> liftIO (z3Check t (OpNeg expr))
