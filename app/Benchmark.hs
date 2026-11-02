@@ -9,7 +9,7 @@ import Feasibility (findCounterExample)
 import Optimize (optimize)
 import SMT (z3Check)
 import Control.Monad.Extra (firstJustM, when, concatMapM)
-import GCLParser.GCLDatatype as G
+import GCLParser.GCLDatatype as G ( Program(stmt) )
 import GCLParser.Parser (parseGCLfile)
 import Control.DeepSeq
 import GHC.Generics (Generic)
@@ -33,16 +33,17 @@ main = do
   mutants <- getMutantPaths
 
   defaultMain [
-    bgroup "experiment=1" (makeBenchMarks experiments),
+    bgroup "experiment=1" (makeBenchMarks experiments 1),
     bgroup "experiment=2" (map benchDirectory mutants)
     ]
 
-makeBenchMarks :: [Experiment] -> [Benchmark]
-makeBenchMarks experiments = map make experiments
+makeBenchMarks :: [Experiment] -> Int -> [Benchmark]
+makeBenchMarks experiments expNum = map (make expNum) experiments
   where 
-    make :: Experiment -> Benchmark
-    make (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
-      bench name $ nfIO $ run program (cfgK cfg) cfg
+    make :: Int -> Experiment -> Benchmark
+    make expNum (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
+      bench (createName name file cfg n expNum) $ nfIO $ run program (cfgK cfg) cfg
+    createName name file cfg n expNum = "Name=" ++ name ++ ",File=" ++ file ++ ",N=" ++ show n ++ ",K=" ++ show (cfgK cfg) ++ ",Q=" ++ show (cfgQ cfg) ++ ",Experiment=" ++ show expNum
 
 
 -- | Gets a list of tuples, with (mutantDirectory, [MutantPaths])
