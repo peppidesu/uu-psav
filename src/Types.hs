@@ -23,7 +23,7 @@ module Types (
     runApp,
     pathCount,
     exprSize,
-    MetricsAvStd,
+    MetricsAvStd(..),
     toMetricsAvStd
 ) where
 
