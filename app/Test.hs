@@ -56,14 +56,16 @@ instance ToNamedRecord Statistic where
         "mtrMeanFeasibilityPrunedAmountTrivial" .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsMean s),
         "mtrMeanFormulaLength"                  .= (mtrAvStdFormulaLength                  $ statMetricsMean s),
 
-        "mtrStdFeasibilityChecks"              .= (mtrAvStdFeasibilityChecks              $ statMetricsMean s),
-        "mtrStdFeasibilityZ3"                  .= (mtrAvStdFeasibilityZ3                  $ statMetricsMean s),
-        "mtrStdFeasibilityTrivial"             .= (mtrAvStdFeasibilityTrivial             $ statMetricsMean s),
-        "mtrStdFeasibilityPrunedZ3"            .= (mtrAvStdFeasibilityPrunedZ3            $ statMetricsMean s),
-        "mtrStdFeasibilityPrunedTrivial"       .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsMean s),
-        "mtrStdFeasibilityPrunedAmountZ3"      .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsMean s),
-        "mtrStdFeasibilityPrunedAmountTrivial" .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsMean s),
-        "mtrStdFormulaLength"                  .= (mtrAvStdFormulaLength                  $ statMetricsMean s),
+        "mtrStdFeasibilityChecks"              .= (mtrAvStdFeasibilityChecks              $ statMetricsStd s),
+        "mtrStdFeasibilityZ3"                  .= (mtrAvStdFeasibilityZ3                  $ statMetricsStd s),
+        "mtrStdFeasibilityTrivial"             .= (mtrAvStdFeasibilityTrivial             $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedZ3"            .= (mtrAvStdFeasibilityPrunedZ3            $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedTrivial"       .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedAmountZ3"      .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedAmountTrivial" .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsStd s),
+
+        "mtrAvStdPathsInspected"               .= (mtrAvStdPathsInspected                 $ statMetricsStd s),
+        "mtrStdFormulaLength"                  .= (mtrAvStdFormulaLength                  $ statMetricsStd s),
         "wasValid" .= (show $ statWasValid s)
      ]
 
@@ -95,7 +97,7 @@ instance DefaultOrdered Statistic where
 
 generateStatistics :: IO ()
 generateStatistics = do
-    statistics <- mapM runExperiment experiments
+    statistics <- mapM runExperiment =<< experiments
     putStrLn "writing file..."
     BL.writeFile "./stats.csv" $ encodeDefaultOrderedByName statistics
 

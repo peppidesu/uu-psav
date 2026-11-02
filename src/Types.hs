@@ -214,6 +214,7 @@ data Metrics = Metrics
     , mtrFeasibilityPrunedAmountTrivial :: !Int
     , mtrSimplifierElapsed :: !NominalDiffTime
     , mtrSimplifierCalls :: !Int
+    , mtrPathsInspected :: !Int
     }
     deriving stock (Show, Eq)
 
@@ -232,7 +233,7 @@ timeSimplifier act = do
     pure a
 
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0 0 0 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0 0 0 0 0 0 0 0
 
 addMetrics :: Metrics -> AppM ()
 addMetrics m = modify (<> m)
@@ -250,6 +251,7 @@ instance Semigroup Metrics where
         , mtrFeasibilityPrunedAmountTrivial = mtrFeasibilityPrunedAmountTrivial a + mtrFeasibilityPrunedAmountTrivial b
         , mtrSimplifierElapsed = mtrSimplifierElapsed a + mtrSimplifierElapsed b
         , mtrSimplifierCalls = mtrSimplifierCalls a + mtrSimplifierCalls b
+        , mtrPathsInspected = mtrPathsInspected a + mtrPathsInspected b
         }
 
 instance Monoid Metrics where
@@ -274,24 +276,12 @@ data MetricsAvStd = MetricsAvStd
     , mtrAvStdFeasibilityPrunedAmountZ3 :: !Double
     , mtrAvStdFeasibilityPrunedAmountTrivial :: !Double
     , mtrAvStdSimplifierTime :: !Double
+    , mtrAvStdPathsInspected  :: !Double
     }
     deriving stock (Show, Eq)
 
 toMetricsAvStd :: [Metrics] -> (MetricsAvStd, MetricsAvStd)
 toMetricsAvStd ms = (
-    MetricsAvStd {
-        mtrAvStdFeasibilityChecks               = stdev $ map (intToDouble . mtrFeasibilityChecks) ms,
-        mtrAvStdFeasibilityZ3                   = stdev $ map (intToDouble . mtrFeasibilityZ3) ms,
-        mtrAvStdFeasibilityTrivial              = stdev $ map (intToDouble . mtrFeasibilityTrivial) ms,
-        mtrAvStdFeasibilityPrunedZ3             = stdev $ map (intToDouble . mtrFeasibilityPrunedZ3) ms,
-        mtrAvStdFeasibilityPrunedTrivial        = stdev $ map (intToDouble . mtrFeasibilityPrunedTrivial) ms,
-        mtrAvStdFormulaLength                   = stdev $ map (intToDouble . mtrFormulaLength) ms,
-        mtrAvStdFeasibilityPrunedAmountZ3       = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountZ3) ms,
-        mtrAvStdFeasibilityPrunedAmountTrivial  = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
-        mtrAvStdSimplifierTime                  = stdev $ map (\m ->
-            (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
-        ) ms
-     },
     MetricsAvStd {
         mtrAvStdFeasibilityChecks               = average $ map (intToDouble . mtrFeasibilityChecks) ms,
         mtrAvStdFeasibilityZ3                   = average $ map (intToDouble . mtrFeasibilityZ3) ms,
@@ -303,6 +293,22 @@ toMetricsAvStd ms = (
         mtrAvStdFeasibilityPrunedAmountTrivial  = average $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
         mtrAvStdSimplifierTime                  = average $ map (\m ->
             (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
-        ) ms
-     }
+        ) ms,
+        mtrAvStdPathsInspected                  = average $ map (intToDouble . mtrPathsInspected) ms
+     },
+
+     MetricsAvStd {
+         mtrAvStdFeasibilityChecks               = stdev $ map (intToDouble . mtrFeasibilityChecks) ms,
+         mtrAvStdFeasibilityZ3                   = stdev $ map (intToDouble . mtrFeasibilityZ3) ms,
+         mtrAvStdFeasibilityTrivial              = stdev $ map (intToDouble . mtrFeasibilityTrivial) ms,
+         mtrAvStdFeasibilityPrunedZ3             = stdev $ map (intToDouble . mtrFeasibilityPrunedZ3) ms,
+         mtrAvStdFeasibilityPrunedTrivial        = stdev $ map (intToDouble . mtrFeasibilityPrunedTrivial) ms,
+         mtrAvStdFormulaLength                   = stdev $ map (intToDouble . mtrFormulaLength) ms,
+         mtrAvStdFeasibilityPrunedAmountZ3       = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountZ3) ms,
+         mtrAvStdFeasibilityPrunedAmountTrivial  = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
+         mtrAvStdSimplifierTime                  = stdev $ map (\m ->
+             (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
+         ) ms,
+         mtrAvStdPathsInspected                  = stdev $ map (intToDouble . mtrPathsInspected) ms
+      }
  )
