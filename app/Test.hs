@@ -33,7 +33,8 @@ data Statistic = Statistic {
   statN :: Int,
   statK :: Int,
   statQ :: Double,
-  statMetrics :: Metrics,
+  statMetricsMean :: MetricsAvStd,
+  statMetricsStd :: MetricsAvStd,
   statFile :: String,
   statWasValid :: Bool
 } deriving (Generic, Show)
@@ -248,7 +249,9 @@ runExperiment (Experiment name file cfg n) = do
         ++ "  file: " ++ file ++ ['\n']
         ++ "  n = " ++ show n ++ ", k = " ++ show (cfgK cfg) ++ ", q = " ++ show (cfgQ cfg)
     prog <- parseGCLfileWithMaybeN file (Just n)
-    (wasValid, !metrics) <- runBool prog cfg
+    results <- mapM (const $ runBool prog cfg) [1..10]
+    let (wasValid, metrics) = unzip results
+    let (metricsMean, metricsStd) = toMetricsAvStd $ metrics
 
     return $ Statistic {
         statName = name,
@@ -256,11 +259,10 @@ runExperiment (Experiment name file cfg n) = do
         statK = cfgK cfg,
         statQ = cfgQ cfg,
         statFile = file,
-        statMetrics = metrics,
-        statWasValid = wasValid
+        statMetricsMean = metricsMean,
+        statMetricsStd = metricsStd,
+        statWasValid = or wasValid
     }
-
-
 
 runBool :: G.Program -> Config -> IO ((Bool, Metrics))
 runBool prog' config = runApp config $ do

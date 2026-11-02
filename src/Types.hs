@@ -23,6 +23,8 @@ module Types (
     runApp,
     pathCount,
     exprSize,
+    MetricsAvStd,
+    toMetricsAvStd
 ) where
 
 import Data.Tree (Tree (..))
@@ -42,6 +44,7 @@ import GHC.Generics (Generic)
 import GHC.Clock (getMonotonicTimeNSec)
 import Data.Word (Word64)
 import Data.Ratio ((%))
+import Extra (intToDouble)
 
 data Stmt
     = Skip
@@ -251,3 +254,55 @@ instance Semigroup Metrics where
 
 instance Monoid Metrics where
     mempty = emptyMetrics
+
+stdev :: Floating a => [a] -> a
+stdev xs = sqrt . average . map ((^2) . (-) axs) $ xs
+    where average = (/) <$> sum <*> realToFrac . length
+          axs     = average xs
+
+average :: Floating a => [a] -> a
+average xs = sum xs / (realToFrac $ length xs)
+
+data MetricsAvStd = MetricsAvStd
+    {
+      mtrAvStdFeasibilityChecks :: !Double
+    , mtrAvStdFeasibilityZ3 :: !Double
+    , mtrAvStdFeasibilityTrivial :: !Double
+    , mtrAvStdFeasibilityPrunedZ3 :: !Double
+    , mtrAvStdFeasibilityPrunedTrivial :: !Double
+    , mtrAvStdFormulaLength :: !Double
+    , mtrAvStdFeasibilityPrunedAmountZ3 :: !Double
+    , mtrAvStdFeasibilityPrunedAmountTrivial :: !Double
+    , mtrAvStdSimplifierTime :: !Double
+    }
+    deriving stock (Show, Eq)
+
+toMetricsAvStd :: [Metrics] -> (MetricsAvStd, MetricsAvStd)
+toMetricsAvStd ms = (
+    MetricsAvStd {
+        mtrAvStdFeasibilityChecks               = stdev $ map (intToDouble . mtrFeasibilityChecks) ms,
+        mtrAvStdFeasibilityZ3                   = stdev $ map (intToDouble . mtrFeasibilityZ3) ms,
+        mtrAvStdFeasibilityTrivial              = stdev $ map (intToDouble . mtrFeasibilityTrivial) ms,
+        mtrAvStdFeasibilityPrunedZ3             = stdev $ map (intToDouble . mtrFeasibilityPrunedZ3) ms,
+        mtrAvStdFeasibilityPrunedTrivial        = stdev $ map (intToDouble . mtrFeasibilityPrunedTrivial) ms,
+        mtrAvStdFormulaLength                   = stdev $ map (intToDouble . mtrFormulaLength) ms,
+        mtrAvStdFeasibilityPrunedAmountZ3       = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountZ3) ms,
+        mtrAvStdFeasibilityPrunedAmountTrivial  = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
+        mtrAvStdSimplifierTime                  = stdev $ map (\m ->
+            (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
+        ) ms
+     },
+    MetricsAvStd {
+        mtrAvStdFeasibilityChecks               = average $ map (intToDouble . mtrFeasibilityChecks) ms,
+        mtrAvStdFeasibilityZ3                   = average $ map (intToDouble . mtrFeasibilityZ3) ms,
+        mtrAvStdFeasibilityTrivial              = average $ map (intToDouble . mtrFeasibilityTrivial) ms,
+        mtrAvStdFeasibilityPrunedZ3             = average $ map (intToDouble . mtrFeasibilityPrunedZ3) ms,
+        mtrAvStdFeasibilityPrunedTrivial        = average $ map (intToDouble . mtrFeasibilityPrunedTrivial) ms,
+        mtrAvStdFormulaLength                   = average $ map (intToDouble . mtrFormulaLength) ms,
+        mtrAvStdFeasibilityPrunedAmountZ3       = average $ map (intToDouble . mtrFeasibilityPrunedAmountZ3) ms,
+        mtrAvStdFeasibilityPrunedAmountTrivial  = average $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
+        mtrAvStdSimplifierTime                  = average $ map (\m ->
+            (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
+        ) ms
+     }
+ )
