@@ -116,20 +116,20 @@ experimentsMutants = do
     mutants <- getMutantPaths
     pure
         $ sortOn (\(Experiment _ _ _ n) -> n)
-        $ concatMap (\f -> completenessExperiments f 80 1.0) mutants
+        $ concatMap (\f -> completenessExperiments f 50 1.0) mutants
 
 performanceExperimentsAll :: [Experiment]
 performanceExperimentsAll
     = concat [
-        performanceExperimentsQ "./examples/benchmark/divByN.gcl"       80 [-1, 0, 1, 2, 4, 8, 16],
-        performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     70 [-1, 0, 1, 2, 4, 8, 16],
-        performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       70 [-1, 0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/divByN.gcl"       40 [0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     40 [0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       40 [0, 1, 2, 4, 8, 16],
 
-        performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..10]] 8.0,
-        performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..7]]  1.0,
-        performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..7]]  1.0,
+        performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..4]]  16.0,
+        performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..4]]  1.0,
+        performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..4]]  1.0,
 
-        performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..8]]  8.0,
-        performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..5]]  1.0,
-        performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..5]]  1.0
+        performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..4]]  16.0,
+        performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..4]]  1.0,
+        performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..4]]  1.0
     ]

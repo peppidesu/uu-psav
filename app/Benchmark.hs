@@ -20,7 +20,7 @@ import Types
 import Control.Monad.IO.Class
 import Parse (parseGCLfileWithMaybeN)
 import System.Directory.Extra (listFiles)
-import Experiments 
+import Experiments
 import Criterion.Types (Benchmark(Benchmark))
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the
@@ -38,7 +38,7 @@ main = do
 
 makeBenchMarks :: [Experiment] -> Int -> [Benchmark]
 makeBenchMarks experiments expNum = map (make expNum) experiments
-  where 
+  where
     make :: Int -> Experiment -> Benchmark
     make expNum (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
       bench (createName name file cfg n expNum) $ nfIO $ run program (cfgK cfg) cfg
