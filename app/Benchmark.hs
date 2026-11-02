@@ -9,7 +9,7 @@ import Feasibility (findCounterExample)
 import Optimize (optimize)
 import SMT (z3Check)
 import Control.Monad.Extra (firstJustM, when, concatMapM)
-import GCLParser.GCLDatatype as G ( Program(stmt) )
+import GCLParser.GCLDatatype as G
 import GCLParser.Parser (parseGCLfile)
 import Control.DeepSeq
 import GHC.Generics (Generic)
@@ -20,7 +20,7 @@ import Types
 import Control.Monad.IO.Class
 import Parse (parseGCLfileWithMaybeN)
 import System.Directory.Extra (listFiles)
-import Experiments 
+import Experiments
 import Criterion.Types (Benchmark(Benchmark))
 
 -- The env function of criterion requires program to be NFData. We do not have an easy way to change the
@@ -33,17 +33,16 @@ main = do
   mutants <- getMutantPaths
 
   defaultMain [
-    bgroup "experiment=1" (makeBenchMarks experiments 1),
+    bgroup "experiment=1" (makeBenchMarks experiments),
     bgroup "experiment=2" (map benchDirectory mutants)
     ]
 
-makeBenchMarks :: [Experiment] -> Int -> [Benchmark]
-makeBenchMarks experiments expNum = map (make expNum) experiments
-  where 
-    make :: Int -> Experiment -> Benchmark
-    make expNum (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
-      bench (createName name file cfg n expNum) $ nfIO $ run program (cfgK cfg) cfg
-    createName name file cfg n expNum = "Name=" ++ name ++ ",File=" ++ file ++ ",N=" ++ show n ++ ",K=" ++ show (cfgK cfg) ++ ",Q=" ++ show (cfgQ cfg) ++ ",Experiment=" ++ show expNum
+makeBenchMarks :: [Experiment] -> [Benchmark]
+makeBenchMarks experiments = map make experiments
+  where
+    make :: Experiment -> Benchmark
+    make (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
+      bench name $ nfIO $ run program (cfgK cfg) cfg
 
 
 -- | Gets a list of tuples, with (mutantDirectory, [MutantPaths])

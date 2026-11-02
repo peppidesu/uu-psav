@@ -18,7 +18,7 @@ import GHC.Generics (Generic)
 import qualified Data.ByteString.Lazy as BL
 import Data.Csv (DefaultOrdered (..), ToNamedRecord (..), header, (.=), namedRecord, encodeDefaultOrderedByName)
 import Experiments (Experiment(..))
-import Experiments (experiments)
+import Experiments (performanceExperimentsAll, experimentsMutants)
 
 main :: IO ()
 main = do
@@ -97,7 +97,10 @@ instance DefaultOrdered Statistic where
 
 generateStatistics :: IO ()
 generateStatistics = do
-    statistics <- mapM runExperiment =<< experiments
+    -- let experiments = performanceExperimentsAll
+    experiments <- experimentsMutants
+
+    statistics <- mapM runExperiment experiments
     putStrLn "writing file..."
     BL.writeFile "./stats.csv" $ encodeDefaultOrderedByName statistics
 
