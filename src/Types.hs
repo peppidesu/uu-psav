@@ -7,6 +7,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE BangPatterns #-}
 module Types (
     Stmt(..),
     PathTree,
@@ -38,6 +39,9 @@ import Data.Time.Clock (NominalDiffTime)
 import Data.Time (getCurrentTime, diffUTCTime)
 import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT, initStdGen, evalRand, random)
 import GHC.Generics (Generic)
+import GHC.Clock (getMonotonicTimeNSec)
+import Data.Word (Word64)
+import Data.Ratio ((%))
 
 data Stmt
     = Skip
@@ -169,7 +173,6 @@ data Config = Config
 asksConfig :: (Config -> a) -> AppM a
 asksConfig = asks
 
-
 newtype AppM a = AppM {unAppM ::
     ReaderT Config  (
     StateT  Metrics (
@@ -206,11 +209,27 @@ data Metrics = Metrics
     , mtrFormulaLength :: !Int
     , mtrFeasibilityPrunedAmountZ3 :: !Int
     , mtrFeasibilityPrunedAmountTrivial :: !Int
+    , mtrSimplifierElapsed :: !NominalDiffTime
+    , mtrSimplifierCalls :: !Int
     }
     deriving stock (Show, Eq)
 
+nsToDiffTime :: Word64 -> NominalDiffTime
+nsToDiffTime ns = fromRational (toInteger ns % 1000000000)
+
+timeSimplifier :: AppM a -> AppM a
+timeSimplifier act = do
+    t0 <- liftIO getMonotonicTimeNSec
+    !a <- act
+    t1 <- liftIO getMonotonicTimeNSec
+    addMetrics mempty {
+        mtrSimplifierCalls = 1,
+        mtrSimplifierElapsed = nsToDiffTime (t1 - t0)
+    }
+    pure a
+
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0 0 0 0 0 0 0
 
 addMetrics :: Metrics -> AppM ()
 addMetrics m = modify (<> m)
@@ -226,6 +245,8 @@ instance Semigroup Metrics where
         , mtrFeasibilityPrunedAmountZ3 = mtrFeasibilityPrunedAmountZ3 a + mtrFeasibilityPrunedAmountZ3 b
         , mtrFormulaLength = mtrFormulaLength a + mtrFormulaLength b
         , mtrFeasibilityPrunedAmountTrivial = mtrFeasibilityPrunedAmountTrivial a + mtrFeasibilityPrunedAmountTrivial b
+        , mtrSimplifierElapsed = mtrSimplifierElapsed a + mtrSimplifierElapsed b
+        , mtrSimplifierCalls = mtrSimplifierCalls a + mtrSimplifierCalls b
         }
 
 instance Monoid Metrics where
