@@ -47,7 +47,7 @@ check size types e ts = do
     rand <- getRandom::AppM Double
 
     result <- if heuristic && rand > prob
-        then if not alwaysSimpleCheck
+        then if alwaysSimpleCheck
             then fromMaybe True <$> simpleCheck predicate
             else pure True
         else fromMaybe
@@ -108,5 +108,5 @@ findCounterExample types = go [] id
             mtrPathsInspected = 1
         }
         case opt of
-            LitB _ -> pure (Just $ [("x", "any")])
+            LitB False -> pure (Just $ [("x", "any")])
             expr -> liftIO (z3Check t (OpNeg expr))

@@ -5,9 +5,7 @@
 //
 // Encoding per setting (one colour each):
 //   line + marker   Mean
-//   shaded band     [MeanLB, MeanUB]   (CI of the mean)
-//   thick whisker   Mean ± Stddev
-//   whisker caps    Mean ± StddevLB (inner) and Mean ± StddevUB (outer)
+//   shaded band     Mean ± Stddev
 //
 // The K sweep is run at Q = 1 and, for two settings, also at Q = 16 (dashed
 // line, square markers, same colour as the Q = 1 twin).
@@ -22,12 +20,12 @@
 // (key, label, colour, Q)
 #let settings = (
   ("perf_simplifier-none_heuristic-off", "none, heuristic off", rgb("#e69f00"), 1),
-  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 1),
+  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 1),
   ("perf_simplifier-full_heuristic-off", "full, heuristic off", rgb("#56b4e9"), 1),
   ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 1),
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 1),
-  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 16),
-  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 16),
+  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 16),
+  ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 16),
 )
 
 #let ks = (10, 20, 30, 40)
@@ -63,7 +61,6 @@
 
   let n = settings.len()
   let dx = 0.6 // x offset between neighbouring settings, in K units
-  let cap = 0.2
 
   plot.plot(
     size: (4.2, 4),
@@ -85,29 +82,12 @@
         if rows.len() == 0 { continue }
         let at(r) = r.k + off
 
-        // CI of the mean: shaded band
+        // Mean ± std: shaded band
         plot.add-fill-between(
-          rows.map(r => (at(r), lg(r.mub))),
-          rows.map(r => (at(r), lg(r.mlb))),
-          style: (stroke: none, fill: col.transparentize(80%)),
+          rows.map(r => (at(r), lg(r.m + r.s))),
+          rows.map(r => (at(r), lg(r.m - r.s))),
+          style: (stroke: none, fill: col.transparentize(75%)),
         )
-
-        // Stddev whiskers: Mean ± Stddev; caps at Mean ± StddevLB / StddevUB
-        for r in rows {
-          let x = at(r)
-          plot.add(
-            ((x, lg(r.m - r.s)), (x, lg(r.m + r.s))),
-            style: (stroke: (paint: col, thickness: 2pt)),
-          )
-          for d in (r.slb, r.sub) {
-            for v in (lg(r.m - d), lg(r.m + d)) {
-              plot.add(
-                ((x - cap, v), (x + cap, v)),
-                style: (stroke: (paint: col, thickness: 0.8pt)),
-              )
-            }
-          }
-        }
 
         // Mean
         plot.add(
@@ -148,8 +128,7 @@
     legend
     v(0.3em)
     text(size: 8pt)[
-      Line: mean; band: CI of the mean; thick whisker: mean $plus.minus$ stddev;
-      caps: mean $plus.minus$ CI bounds of the stddev. Log scale.
+      Line: mean; band: mean $plus.minus$ stddev. Log scale.
       Solid: $Q = 1$; dashed: $Q = 16$.
     ]
   },
