@@ -24,7 +24,8 @@ module Types (
     pathCount,
     exprSize,
     MetricsAvStd(..),
-    toMetricsAvStd
+    toMetricsAvStd,
+    timeSimplifier,
 ) where
 
 import Data.Tree (Tree (..))

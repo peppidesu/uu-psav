@@ -310,8 +310,12 @@ step = do
 optimize :: Expr -> AppM Expr
 optimize e = do
     enabled <- asksConfig cfgSimplifierEnabled
-    step' <- step
-    return $ if enabled then rewrite step' e else e
+    if enabled
+        then do
+            step' <- step
+            addMetrics mempty { mtrSimplifierCalls = 1 }
+            timeSimplifier (return $ rewrite step' e)
+        else return e
 
 -- TODO: dealing with minus in LitI (is this necessary?)
 -- TODO: consider simplifying not (a or b) to (not a) and (not b)
