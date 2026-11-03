@@ -36,6 +36,7 @@
             pkgs.tinymist
             pkgs.miller
             pkgs.gnuplot
+            pkgs.typst
           ];
           packages = [
             (pkgs.python3.withPackages (pc: with pc; [

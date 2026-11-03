@@ -1,4 +1,4 @@
-#! /usr/bin/bash
+#! /bin/sh
 mlr --csv put '$K = substr(regextract($Name, "K=[0-9]*"),2, -1)' divnBench.csv |
 mlr --csv put '$N = substr(regextract($Name, "N=[0-9]*"),2, -1)' |
 mlr --csv put '$Q = substr(regextract($Name, "Q=[0-9]*"),2, -1)' |
