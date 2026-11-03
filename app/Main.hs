@@ -33,7 +33,8 @@ main = do
          cfgAlwaysSimpleCheck=True,
          cfgHeuristic=True,
          cfgK=k,
-         cfgQ=16
+         cfgQ=16,
+         cfgMetrics=True
      }
      if inputs.showHelp
      then liftIO $ putStrLn usage

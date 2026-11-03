@@ -17,6 +17,10 @@ import System.Directory.Extra
 import GHC.Generics (Generic)
 import qualified Data.ByteString.Lazy as BL
 import Data.Csv (DefaultOrdered (..), ToNamedRecord (..), header, (.=), namedRecord, encodeDefaultOrderedByName)
+import Control.Concurrent (getNumCapabilities)
+import Control.Concurrent.Async (mapConcurrently)
+import Control.Concurrent.QSem (newQSem, waitQSem, signalQSem)
+import Control.Exception (bracket_)
 import Experiments (Experiment(..))
 import Experiments (performanceExperimentsAll, experimentsMutants)
 
@@ -100,7 +104,11 @@ generateStatistics = do
     let experiments = performanceExperimentsAll
     -- experiments <- experimentsMutants
 
-    statistics <- mapM runExperiment experiments
+    -- bound the number of experiments running at once to the number of cores
+    sem <- getNumCapabilities >>= newQSem
+    statistics <- mapConcurrently
+        (bracket_ (waitQSem sem) (signalQSem sem) . runExperiment)
+        experiments
     putStrLn "writing file..."
     BL.writeFile "./stats.csv" $ encodeDefaultOrderedByName statistics
 
@@ -121,7 +129,8 @@ createTestTree (name, toTest) =
         cfgAlwaysSimpleCheck=True,
         cfgHeuristic=True,
         cfgK=80,
-        cfgQ=1
+        cfgQ=1,
+        cfgMetrics=True
     }) @? "Mutant not killed"),
     testCase ("no simplifier") (testFunc p n (Config {
         cfgVerbose=False,
@@ -134,7 +143,8 @@ createTestTree (name, toTest) =
         cfgAlwaysSimpleCheck=True,
         cfgHeuristic=True,
         cfgK=80,
-        cfgQ=1
+        cfgQ=1,
+        cfgMetrics=True
     }) @? "Mutant not killed")]) toTest
   where
     getTestName path = last $ splitOn "/" path
@@ -144,12 +154,13 @@ createTestTree (name, toTest) =
 
 runExperiment :: Experiment -> IO (Statistic)
 runExperiment (Experiment name file cfg n) = do
+    -- single putStrLn so concurrent experiments don't interleave mid-message
     putStrLn $ "Running experiment:" ++ name ++ ['\n']
         ++ "  file: " ++ file ++ ['\n']
         ++ "  n = " ++ show n ++ ", k = " ++ show (cfgK cfg) ++ ", q = " ++ show (cfgQ cfg)
     prog <- parseGCLfileWithMaybeN file (Just n)
-    results <- mapM (const $ runBool prog cfg) [1..5]
-    let (wasValid, metrics) = unzip results
+    results <- mapM (const $ runBool prog cfg) [1..10]
+    let (!wasValid, !metrics) = unzip results
     let (metricsMean, metricsStd) = toMetricsAvStd $ metrics
 
     return $ Statistic {

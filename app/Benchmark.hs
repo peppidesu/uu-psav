@@ -41,7 +41,7 @@ makeBenchMarks experiments expNum = map (make expNum) experiments
   where
     make :: Int -> Experiment -> Benchmark
     make expNum (Experiment name file cfg n) = env (parseGCLfileWithMaybeN file (Just n)) $ \program ->
-      bench (createName name file cfg n expNum) $ nfIO $ run program (cfgK cfg) cfg
+      bench (createName name file cfg n expNum) $ nfIO $ run program (cfgK cfg) cfg { cfgMetrics = False }
     createName name file cfg n expNum = "Name=" ++ name ++ ",File=" ++ file ++ ",N=" ++ show n ++ ",K=" ++ show (cfgK cfg) ++ ",Q=" ++ show (cfgQ cfg) ++ ",Experiment=" ++ show expNum
 
 run :: G.Program -> Int -> Config -> IO ()

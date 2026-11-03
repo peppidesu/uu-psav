@@ -65,7 +65,8 @@ baseExperiment name file = Experiment name file (Config {
     cfgAlwaysSimpleCheck=True,
     cfgHeuristic=True,
     cfgK=0,
-    cfgQ=1.0
+    cfgQ=1.0,
+    cfgMetrics=True
  }) 10
 
 withNKQ :: [Int] -> [Int] -> [Double] -> Experiment -> [Experiment]

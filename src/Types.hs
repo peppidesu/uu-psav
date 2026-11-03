@@ -35,9 +35,10 @@ import Data.Functor.Foldable (cata)
 import Data.Map (Map)
 import GCLParser.GCLDatatype (Expr)
 import Control.Lens.Plated (Plated (plate))
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
-import Control.Monad.State.Lazy (MonadState (..), StateT, runStateT, modify)
+import Control.Monad.State.Strict (MonadState (..), StateT, runStateT, modify')
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time (getCurrentTime, diffUTCTime)
 import Control.Monad.Random (StdGen, RandT, MonadRandom, mkStdGen, evalRandT, initStdGen, evalRand, random)
@@ -171,6 +172,7 @@ data Config = Config
     , cfgHeuristic :: !Bool
     , cfgK :: !Int
     , cfgQ :: !Double
+    , cfgMetrics :: !Bool
     }
     deriving stock (Show, Eq, Generic)
 
@@ -192,16 +194,10 @@ newtype AppM a = AppM {unAppM ::
     , MonadRandom
     )
 
--- | Run the app, returning both the result and the collected metrics.
 runApp :: Config -> AppM a -> IO (a, Metrics)
 runApp cfg (AppM m) = do
     rng <- initStdGen
     evalRandT (runStateT (runReaderT m cfg) emptyMetrics) rng
-
--- | Run the app and discard the metrics.
-runApp_ :: Config -> AppM a -> IO a
-runApp_ cfg app = fst <$> runApp cfg app
-
 
 data Metrics = Metrics
     {
@@ -224,22 +220,28 @@ nsToDiffTime ns = fromRational (toInteger ns % 1000000000)
 
 timeSimplifier :: AppM a -> AppM a
 timeSimplifier act = do
-    t0 <- liftIO getMonotonicTimeNSec
-    !a <- act
-    t1 <- liftIO getMonotonicTimeNSec
-    addMetrics mempty {
-        mtrSimplifierCalls = 1,
-        mtrSimplifierElapsed = nsToDiffTime (t1 - t0)
-    }
-    pure a
+    enabled <- asksConfig cfgMetrics
+    if enabled then timed else act
+  where
+    timed = do
+        t0 <- liftIO getMonotonicTimeNSec
+        !a <- act
+        t1 <- liftIO getMonotonicTimeNSec
+        addMetrics mempty {
+            mtrSimplifierCalls = 1,
+            mtrSimplifierElapsed = nsToDiffTime (t1 - t0)
+        }
+        pure a
 
 emptyMetrics :: Metrics
 emptyMetrics = Metrics 0 0 0 0 0 0 0 0 0 0 0
 
 addMetrics :: Metrics -> AppM ()
-addMetrics m = modify (<> m)
+addMetrics m = do
+    enabled <- asksConfig cfgMetrics
+    when enabled $ modify' (<> m)
 
--- Metrics form a monoid, so sub-computations can be measured and merged.
+
 instance Semigroup Metrics where
     a <> b = Metrics
         { mtrFeasibilityChecks = mtrFeasibilityChecks a + mtrFeasibilityChecks b
