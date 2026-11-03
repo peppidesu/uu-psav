@@ -17,15 +17,13 @@ import System.Directory.Extra
 import GHC.Generics (Generic)
 import qualified Data.ByteString.Lazy as BL
 import Data.Csv (DefaultOrdered (..), ToNamedRecord (..), header, (.=), namedRecord, encodeDefaultOrderedByName)
-import Control.Concurrent (getNumCapabilities)
-import Control.Concurrent.Async (mapConcurrently)
-import Control.Concurrent.QSem (newQSem, waitQSem, signalQSem)
-import Control.Exception (bracket_)
+import System.IO (hSetBuffering, stdout, BufferMode(LineBuffering))
 import Experiments (Experiment(..))
 import Experiments (performanceExperimentsAll, experimentsMutants)
 
 main :: IO ()
 main = do
+    hSetBuffering stdout LineBuffering -- progress is visible when piped
     generateStatistics
     -- testPathsAndName <- getTestPathsPerDir
     -- let testTrees = map createTestTree testPathsAndName
@@ -104,11 +102,7 @@ generateStatistics = do
     let experiments = performanceExperimentsAll
     -- experiments <- experimentsMutants
 
-    -- bound the number of experiments running at once to the number of cores
-    sem <- getNumCapabilities >>= newQSem
-    statistics <- mapConcurrently
-        (bracket_ (waitQSem sem) (signalQSem sem) . runExperiment)
-        experiments
+    statistics <- mapM runExperiment experiments
     putStrLn "writing file..."
     BL.writeFile "./stats.csv" $ encodeDefaultOrderedByName statistics
 
@@ -154,7 +148,6 @@ createTestTree (name, toTest) =
 
 runExperiment :: Experiment -> IO (Statistic)
 runExperiment (Experiment name file cfg n) = do
-    -- single putStrLn so concurrent experiments don't interleave mid-message
     putStrLn $ "Running experiment:" ++ name ++ ['\n']
         ++ "  file: " ++ file ++ ['\n']
         ++ "  n = " ++ show n ++ ", k = " ++ show (cfgK cfg) ++ ", q = " ++ show (cfgQ cfg)

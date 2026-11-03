@@ -15,7 +15,7 @@
 				// Compile on save
 				// This will compile a PDF for the `main.typ` file in the project root.
 				"exportPdf": "onSave",
-				"outputPath": "$root/$name",
+				"outputPath": "$root/paper/out/$name",
 
 				// Enable formatter
 				"formatterMode": "typstyle",

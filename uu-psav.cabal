@@ -113,7 +113,6 @@ executable benchmark
 executable test
     -- Import common warning flags.
     import:           warnings
-    ghc-options:      -threaded -rtsopts "-with-rtsopts=-N"
 
     -- .hs or .lhs file containing the Main module.
     main-is:          Test.hs
@@ -133,7 +132,6 @@ executable test
                     , uu-psav
                     , tasty
                     , tasty-hunit
-                    , async
 
     -- Directories containing source files.
     hs-source-dirs:   app
