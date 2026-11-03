@@ -47,7 +47,7 @@ check size types e ts = do
     rand <- getRandom::AppM Double
 
     result <- if heuristic && rand > prob
-        then if alwaysSimpleCheck
+        then if not alwaysSimpleCheck
             then fromMaybe True <$> simpleCheck predicate
             else pure True
         else fromMaybe
