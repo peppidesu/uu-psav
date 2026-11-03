@@ -5,7 +5,7 @@
 
 divByN(x:int | divisible:bool) {
   // N is an experiment parameter
-  assume x>1 ;
+  assume x>1;
   var k:int {
     k := 1 ;
     divisible := false ;
