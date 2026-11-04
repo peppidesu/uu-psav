@@ -56,18 +56,20 @@ instance ToNamedRecord Statistic where
         "mtrMeanFeasibilityPrunedTrivial"       .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsMean s),
         "mtrMeanFeasibilityPrunedAmountZ3"      .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsMean s),
         "mtrMeanFeasibilityPrunedAmountTrivial" .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsMean s),
+
+        "mtrMeanPathsInspected"                 .= (mtrAvStdPathsInspected                 $ statMetricsMean s),
         "mtrMeanFormulaLength"                  .= (mtrAvStdFormulaLength                  $ statMetricsMean s),
 
-        "mtrStdFeasibilityChecks"              .= (mtrAvStdFeasibilityChecks              $ statMetricsStd s),
-        "mtrStdFeasibilityZ3"                  .= (mtrAvStdFeasibilityZ3                  $ statMetricsStd s),
-        "mtrStdFeasibilityTrivial"             .= (mtrAvStdFeasibilityTrivial             $ statMetricsStd s),
-        "mtrStdFeasibilityPrunedZ3"            .= (mtrAvStdFeasibilityPrunedZ3            $ statMetricsStd s),
-        "mtrStdFeasibilityPrunedTrivial"       .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsStd s),
-        "mtrStdFeasibilityPrunedAmountZ3"      .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsStd s),
-        "mtrStdFeasibilityPrunedAmountTrivial" .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsStd s),
+        "mtrStdFeasibilityChecks"               .= (mtrAvStdFeasibilityChecks              $ statMetricsStd s),
+        "mtrStdFeasibilityZ3"                   .= (mtrAvStdFeasibilityZ3                  $ statMetricsStd s),
+        "mtrStdFeasibilityTrivial"              .= (mtrAvStdFeasibilityTrivial             $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedZ3"             .= (mtrAvStdFeasibilityPrunedZ3            $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedTrivial"        .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedAmountZ3"       .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsStd s),
+        "mtrStdFeasibilityPrunedAmountTrivial"  .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsStd s),
 
-        "mtrAvStdPathsInspected"               .= (mtrAvStdPathsInspected                 $ statMetricsStd s),
-        "mtrStdFormulaLength"                  .= (mtrAvStdFormulaLength                  $ statMetricsStd s),
+        "mtrStdPathsInspected"                  .= (mtrAvStdPathsInspected                 $ statMetricsStd s),
+        "mtrStdFormulaLength"                   .= (mtrAvStdFormulaLength                  $ statMetricsStd s),
         "wasValid" .= (show $ statWasValid s)
      ]
 

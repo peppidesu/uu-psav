@@ -59,18 +59,10 @@
   ),
 )
 
-// Metric groups: (column suffix, row label)
-#let checks-metrics = (
-  ("FeasibilityChecks", [Feasibility checks]),
-  ("FeasibilityZ3", [Z3 checks]),
-  ("FeasibilityTrivial", [Trivial checks]),
+// Metric rows: (column suffix, row label). The feasibility statistics (checks,
+// Z3 / trivial checks, pruning) live in feasibility-plot.typ.
+#let formula-metrics = (
   ("FormulaLength", [Formula length]),
-)
-#let pruning-metrics = (
-  ("FeasibilityPrunedZ3", [Paths pruned (Z3)]),
-  ("FeasibilityPrunedTrivial", [Paths pruned (trivial)]),
-  ("FeasibilityPrunedAmountZ3", [Pruned amount (Z3)]),
-  ("FeasibilityPrunedAmountTrivial", [Pruned amount (trivial)]),
 )
 
 #let lg(x) = calc.log(calc.max(x, 0) + 1, base: 10)
@@ -79,8 +71,6 @@
 // win on duplicates (the CSV holds the K = 30 point in both sweeps).
 #let series(mode, file, setting, q, metric) = {
   let by-x = (:)
-  // Trivial statistics are irrelevant when the simplifier is off: no series.
-  if metric.contains("Trivial") and setting.contains("simplifier-none") { return () }
   for r in raw-rows {
     if r.fileName.ends-with("/" + file) and r.name == setting {
       if q != none and float(r.Q) != q { continue }
@@ -187,7 +177,5 @@
   caption: caption,
 )
 
-#metric-figure("k", checks-metrics, [Feasibility checks and formula length as a function of $k$.])
-#metric-figure("k", pruning-metrics, [Pruning as a function of $k$.])
-#metric-figure("q", checks-metrics, [Feasibility checks and formula length as a function of $Q$ ($k = 30$).])
-#metric-figure("q", pruning-metrics, [Pruning as a function of $Q$ ($k = 30$).])
+#metric-figure("k", formula-metrics, [Formula length as a function of $k$.])
+#metric-figure("q", formula-metrics, [Formula length as a function of $Q$ ($k = 30$).])
