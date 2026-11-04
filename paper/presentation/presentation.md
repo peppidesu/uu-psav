@@ -41,21 +41,40 @@ Pepijn Bakker - Iris Scheepstra - Konstantinos Tsikouris
 - Depth first exploration (favor staying in loops)
 
 # **General structure - WLP + Feasibility**
+- WLP are used to check if a program is correct.
+- Feasibility checking is done by calculating the wlp up to that point.
+  - Simplifier first
+  - Then Z3
 
 # **General structure - Z3**
+<!-- I say we skip, not that interesting?-->
 
 # **Simplifier**
-- constant folding
-  - integer folding limited
-- chain simplification + normalization
-  - inspects maximal and/or chains
-  - absorption, deduplication, unit removal, annihilation
+- Constant folding, some examples:
+  - not true = false
+  - true && true = true
+  - Integer folding limited, e.g. 4 < 3 or 3 == 3
+- Chain simplification + normalization
+  - Inspects maximal and/or chains
 
+---
 
 # Chain simplification + normalization
-
-
-
+- Absorption:
+  - a || (a && b) = a
+  - (a || b) && a = a
+- Deduplication:
+  - a || b || a = a || b
+  - a && b && a = a
+- Unit removal:
+  - a || false = a
+  - a && true  = a
+- Annihilation: 
+  - a || true  = true
+  - a && false = false
+- Comparison merging:
+  - a < 4 && a > 5 = false
+  - a < 4 && a < 5 = a < 4
 
 ```hs
 -- | Set-level normalisation of one maximal AND/OR chain
@@ -77,7 +96,8 @@ normChain e = case e of
 ```
 --- 
 # Heuristic
-- Simplifier off, simplifier on in a limited state, simplifier fully on
+- Simplifier off, simplifier fully on
+<!-- mention the partial capability, although not in use--->
 - Probability based heuristic
   - Fully on, fully off, and possibility to always check with at least the simplifier.
 - Deeper = lower chance
@@ -91,21 +111,29 @@ normChain e = case e of
 - For these benchmarks, there is a clear winner:
 Full simplifier, heuristics on with Q=16, and always feasibility 
 checking with at least the simplifier.
+- Notice how pullUp has less difference between them.
 - Comparison of full vs no simplifier
 
 ---
-# Results - effect of Q
+# Results - effect of Q on heuristic
 ![Alt text](Screenshot-2026-11-04-094019.png)
 - Clear winner once more
 - Increasing Q has opposite effects in divByN
-- Showcases importance of the simplifier
+  - Showcases importance of the simplifier
+- pullUp again has very similar performance
 
 --- 
 # Results - number of feasibility checks needed
 ![Alt text](Screenshot-2026-11-04-094230.png)
-
+- 
 
 --- 
 # Results - number of feasibility checks needed
 ![Alt text](Screenshot-2026-11-04-095631.png)
 - 
+
+---
+# Possible future research
+- Depth first vs breadth first, and if there is a smart way to figure out which dynamically.
+- Improve simplifier, with some form of caching
+- Dynamically find a way to choose whether to rely only on the simplifier.
