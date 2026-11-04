@@ -37,6 +37,7 @@
             pkgs.miller
             pkgs.gnuplot
             pkgs.typst
+            pkgs.marp-cli
           ];
           packages = [
             (pkgs.python3.withPackages (pc: with pc; [
