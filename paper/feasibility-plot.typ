@@ -11,11 +11,12 @@
 // (boolean literal) check, so a literal that Z3 refutes is counted as a Z3
 // check, a trivial check, a Z3 prune and a trivial prune. To get disjoint
 // categories (which sum to the total number of checks) a check is attributed to
-// the trivial check whenever that check fired:
+// the trivial check whenever that check fired. f is the share of trivial checks
+// that also went through Z3 (see below):
 //
 //   pruned (trivial)   = PrunedTrivial
-//   pruned (Z3)        = PrunedZ3 - PrunedTrivial          (not pruned trivially)
-//   feasible (Z3)      = (Z3 - Trivial) - pruned (Z3)      (Z3 calls on non-literals that passed)
+//   pruned (Z3)        = PrunedZ3 - PrunedTrivial*f        (not pruned trivially)
+//   feasible (Z3)      = (Z3 - Trivial*f) - pruned (Z3)    (Z3 calls on non-literals that passed)
 //   skipped            = Checks - (the three above)        (heuristic skipped the check)
 //
 // ("Feasible (trivial)" never occurs in the data: every literal the trivial check
@@ -23,9 +24,14 @@
 //
 // Trivial counters are ignored (set to 0) for settings with the simplifier off.
 //
-// This assumes every trivially checked formula also went through Z3, which holds
-// for every configuration except `on-bypass`, where it is approximate (there are
-// few trivial checks in that setting). Negative differences are clamped to 0.
+// Where the trivial check ran decides how much of it overlaps with Z3:
+//   - without bypass it only runs inside the Z3 branch, so every trivial check
+//     is also a Z3 check;
+//   - with bypass it also runs on checks the heuristic skipped, which never
+//     reach Z3. The split is not recorded; it is estimated by assuming literals
+//     are equally likely in both branches, i.e. a fraction Z3 / Checks of the
+//     trivial checks (and trivial prunes) also went through Z3.
+// Negative differences are clamped to 0.
 
 #let raw-rows = csv("./stats.csv", row-type: dictionary)
 
@@ -37,12 +43,12 @@
 // the other plots); bars are identified by their label.
 #let settings = (
   ("perf_simplifier-none_heuristic-off", "none, heuristic off", rgb("#e69f00"), 1),
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 1),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 1),
   ("perf_simplifier-full_heuristic-off", "full, heuristic off", rgb("#56b4e9"), 1),
   ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 1),
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 1),
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 16),
-  ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 16),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 16),
+  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 16),
 )
 
 // Stack order, bottom to top: (label, colour)
@@ -67,9 +73,11 @@
   let t = if simplifier-off { 0 } else { metric(r, "FeasibilityTrivial") }
   let pz = metric(r, "FeasibilityPrunedZ3")
   let pt = if simplifier-off { 0 } else { metric(r, "FeasibilityPrunedTrivial") }
+  // share of the trivial checks that also went through Z3
+  let f = if r.name.ends-with("on-bypass") and c > 0 { calc.min(z / c, 1) } else { 1 }
   let pruned-t = pt
-  let pruned-z = calc.max(pz - pt, 0)
-  let ok-z = calc.max(z - calc.min(t, z) - pruned-z, 0)
+  let pruned-z = calc.max(pz - pt * f, 0)
+  let ok-z = calc.max(z - t * f - pruned-z, 0)
   let skipped = calc.max(c - (pruned-t + pruned-z + ok-z), 0)
   (pruned-t, pruned-z, ok-z, skipped)
 }

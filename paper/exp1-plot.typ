@@ -20,12 +20,12 @@
 // (key, label, colour, Q)
 #let settings = (
   ("perf_simplifier-none_heuristic-off", "none, heuristic off", rgb("#e69f00"), 1),
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 1),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 1),
   ("perf_simplifier-full_heuristic-off", "full, heuristic off", rgb("#56b4e9"), 1),
   ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 1),
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 1),
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 16),
-  ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 16),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 16),
+  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 16),
 )
 
 #let ks = (10, 20, 30, 40)

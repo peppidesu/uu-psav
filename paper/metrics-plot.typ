@@ -21,17 +21,17 @@
 // (key, label, colour, Q) for the K sweep (Q = 16 variants are dashed).
 #let k-settings = (
   ("perf_simplifier-none_heuristic-off", "none, heuristic off", rgb("#e69f00"), 1),
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 1),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 1),
   ("perf_simplifier-full_heuristic-off", "full, heuristic off", rgb("#56b4e9"), 1),
   ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 1),
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 1),
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), 16),
-  ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 16),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 16),
+  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 16),
 )
 
 // The Q sweep (K = 30, Q placed at equidistant positions).
 #let q-settings = (
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00"), none),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), none),
   ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), none),
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), none),
 )

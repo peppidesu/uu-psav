@@ -20,7 +20,7 @@
 #let files = ("divByN.gcl", "memberOf.gcl", "pullUp.gcl")
 
 #let settings = (
-  ("perf_simplifier-none_heuristic-on-bypass", "none, heuristic on", rgb("#d55e00")),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00")),
   ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2")),
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7")),
 )
