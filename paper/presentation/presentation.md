@@ -57,6 +57,8 @@ Pepijn Bakker - Iris Scheepstra - Konstantinos Tsikouris
 - Chain simplification + normalization
   - Inspects maximal and/or chains
 
+
+
 ---
 
 # Chain simplification + normalization
@@ -133,7 +135,8 @@ checking with at least the simplifier.
 - 
 
 ---
-# Possible future research
+# Possible improvements and future research
 - Depth first vs breadth first, and if there is a smart way to figure out which dynamically.
 - Improve simplifier, with some form of caching
 - Dynamically find a way to choose whether to rely only on the simplifier.
+- Expand the expression data type to capture more synthetic expressions such as summation of linear terms and use more efficient solvers as the backend.
