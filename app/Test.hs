@@ -99,8 +99,8 @@ instance DefaultOrdered Statistic where
 
 generateStatistics :: IO ()
 generateStatistics = do
-    let experiments = performanceExperimentsAll
-    -- experiments <- experimentsMutants
+    -- let experiments = performanceExperimentsAll
+    experiments <- experimentsMutants
 
     statistics <- mapM runExperiment experiments
     putStrLn "writing file..."
@@ -164,7 +164,7 @@ runExperiment (Experiment name file cfg n) = do
         statFile = file,
         statMetricsMean = metricsMean,
         statMetricsStd = metricsStd,
-        statWasValid = or wasValid
+        statWasValid = and wasValid
     }
 
 runBool :: G.Program -> Config -> IO ((Bool, Metrics))

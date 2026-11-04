@@ -120,7 +120,7 @@ experimentsMutants = do
     mutants <- getMutantPaths
     pure
         $ sortOn (\(Experiment _ _ _ n) -> n)
-        $ concatMap (\f -> completenessExperiments f 40 1.0) mutants
+        $ concatMap (\f -> completenessExperiments f 40 16.0) mutants
 
 performanceExperimentsAll :: [Experiment]
 performanceExperimentsAll
