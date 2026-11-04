@@ -75,3 +75,37 @@ normChain e = case e of
                $ nub                 -- remove duplicate terms
                $ filter (/= unit) xs -- remove units
 ```
+--- 
+# Heuristic
+- Simplifier off, simplifier on in a limited state, simplifier fully on
+- Probability based heuristic
+  - Fully on, fully off, and possibility to always check with at least the simplifier.
+- Deeper = lower chance
+- Q value adjust how fast this drop off happens
+
+---
+# Results - first experiment
+<!-- Here we can see the mean execution times on 3 of the benchmarks-->
+![Alt text](Screenshot-2026-11-04-093303.png)
+
+- For these benchmarks, there is a clear winner:
+Full simplifier, heuristics on with Q=16, and always feasibility 
+checking with at least the simplifier.
+- Comparison of full vs no simplifier
+
+---
+# Results - effect of Q
+![Alt text](Screenshot-2026-11-04-094019.png)
+- Clear winner once more
+- Increasing Q has opposite effects in divByN
+- Showcases importance of the simplifier
+
+--- 
+# Results - number of feasibility checks needed
+![Alt text](Screenshot-2026-11-04-094230.png)
+
+
+--- 
+# Results - number of feasibility checks needed
+![Alt text](Screenshot-2026-11-04-095631.png)
+- 
