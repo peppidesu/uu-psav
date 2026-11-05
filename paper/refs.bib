@@ -1,19 +1,99 @@
-@article{netwok2020,
-  title={At-scale impact of the {Net Wok}: A culinarically holistic investigation of distributed dumplings},
-  author={Astley, Rick and Morris, Linda},
-  journal={Armenian Journal of Proceedings},
-  volume={61},
-  pages={192--219},
-  year=2020,
-  publisher={Automatic Publishing Inc.}
+@article{baldoni2018symex,
+    author = {Baldoni, Roberto and Coppa, Emilio and D’elia, Daniele Cono and Demetrescu, Camil and Finocchi, Irene},
+    title = {A Survey of Symbolic Execution Techniques},
+    year = {2018},
+    issue_date = {May 2019},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    volume = {51},
+    number = {3},
+    issn = {0360-0300},
+    url = {https://doi.org/10.1145/3182657},
+    doi = {10.1145/3182657},
+    abstract = {Many security and software testing applications require checking whether certain properties of a program hold for any possible usage scenario. For instance, a tool for identifying software vulnerabilities may need to rule out the existence of any backdoor to bypass a program’s authentication. One approach would be to test the program using different, possibly random inputs. As the backdoor may only be hit for very specific program workloads, automated exploration of the space of possible inputs is of the essence. Symbolic execution provides an elegant solution to the problem, by systematically exploring many possible execution paths at the same time without necessarily requiring concrete inputs. Rather than taking on fully specified input values, the technique abstractly represents them as symbols, resorting to constraint solvers to construct actual instances that would cause property violations. Symbolic execution has been incubated in dozens of tools developed over the past four decades, leading to major practical breakthroughs in a number of prominent software reliability applications. The goal of this survey is to provide an overview of the main ideas, challenges, and solutions developed in the area, distilling them for a broad audience.},
+    journal = {ACM Comput. Surv.},
+    month = may,
+    articleno = {50},
+    numpages = {39},
+    keywords = {static analysis, software testing, concolic execution, Symbolic execution}
+}
+@misc{yao2025empc,
+      title={Empc: Effective Path Prioritization for Symbolic Execution with Path Cover},
+      author={Shuangjie Yao and Dongdong She},
+      year={2025},
+      eprint={2505.03555},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2505.03555},
+}
+@article{leino2005efficientwp,
+title = {Efficient weakest preconditions},
+journal = {Information Processing Letters},
+volume = {93},
+number = {6},
+pages = {281-288},
+year = {2005},
+issn = {0020-0190},
+doi = {https://doi.org/10.1016/j.ipl.2004.10.015},
+url = {https://www.sciencedirect.com/science/article/pii/S0020019004003357},
+author = {K. Rustan M. Leino},
+keywords = {Program correctness, Formal semantics, Automatic theorem proving},
+abstract = {Desired computer-program properties can be described by logical formulas called verification conditions. Different mathematically-equivalent forms of these verification conditions can have a great impact on the performance of an automatic theorem prover that tries to discharge them. This paper presents a simple weakest-precondition understanding of the ESC/Java technique for generating verification conditions. This new understanding of the technique spotlights the program property that makes the technique work.}
+}
+@inproceedings {cadar2008klee,
+author = {Cristian Cadar and Daniel Dunbar and Dawson Engler},
+title = {{KLEE}: Unassisted and Automatic Generation of {High-Coverage} Tests for Complex Systems Programs},
+booktitle = {8th USENIX Symposium on Operating Systems Design and Implementation (OSDI 08)},
+year = {2008},
+address = {San Diego, CA},
+url = {https://www.usenix.org/conference/osdi-08/klee-unassisted-and-automatic-generation-high-coverage-tests-complex-systems},
+publisher = {USENIX Association},
+month = dec
 }
 
-@article{netwok2022,
-  title={{Net Wok}++: Taking distributed dumplings to the cloud},
-  author={Morris, Linda and Astley, Rick},
-  journal={Armenian Journal of Proceedings},
-  volume={65},
-  pages={101--118},
-  year=2022,
-  publisher={Automatic Publishing Inc.}
+@inproceedings{visser2012green,
+  title={Green: Reducing, Reusing and Recycling Constraints in Program Analysis},
+  author={Visser, Willem and Geldenhuys, Jaco and Dwyer, Matthew B.},
+  booktitle={Proceedings of the ACM SIGSOFT 20th International Symposium on the Foundations of Software Engineering (FSE)},
+  year={2012}
+}
+
+@inproceedings{demoura2008z3,
+  title={Z3: An Efficient {SMT} Solver},
+  author={de Moura, Leonardo and Bj{\o}rner, Nikolaj},
+  booktitle={Tools and Algorithms for the Construction and Analysis of Systems (TACAS)},
+  series={LNCS},
+  volume={4963},
+  pages={337--340},
+  year={2008}
+}
+
+@inproceedings{biere1999bmc,
+  title={Symbolic Model Checking without {BDDs}},
+  author={Biere, Armin and Cimatti, Alessandro and Clarke, Edmund M. and Zhu, Yunshan},
+  booktitle={Tools and Algorithms for the Construction and Analysis of Systems (TACAS)},
+  series={LNCS},
+  volume={1579},
+  pages={193--207},
+  year={1999}
+}
+
+@inproceedings{clarke2004cbmc,
+  title={A Tool for Checking {ANSI-C} Programs},
+  author={Clarke, Edmund and Kroening, Daniel and Lerda, Flavio},
+  booktitle={Tools and Algorithms for the Construction and Analysis of Systems (TACAS)},
+  series={LNCS},
+  volume={2988},
+  pages={168--176},
+  year={2004}
+}
+
+@inproceedings{barnett2005boogie,
+  title={Boogie: A Modular Reusable Verifier for Object-Oriented Programs},
+  author={Barnett, Mike and Chang, Bor-Yuh Evan and DeLine, Robert and Jacobs, Bart and Leino, K. Rustan M.},
+  booktitle={Formal Methods for Components and Objects (FMCO)},
+  series={LNCS},
+  volume={4111},
+  pages={364--387},
+  year={2005}
 }
