@@ -87,6 +87,7 @@ performanceExperimentsFast file ks = concat [
     (withNKQ [10] ks [1])  $ configHeuristicOff      $ configSimplifierFull  $ baseExperiment "perf" file,
     (withNKQ [10] ks [1])  $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
     (withNKQ [10] ks [1])  $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file,
+    (withNKQ [10] ks [1])  $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
     (withNKQ [10] ks [16]) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
  ]
 
@@ -120,20 +121,20 @@ experimentsMutants = do
     mutants <- getMutantPaths
     pure
         $ sortOn (\(Experiment _ _ _ n) -> n)
-        $ concatMap (\f -> completenessExperiments f 40 16.0) mutants
+        $ concatMap (\f -> completenessExperiments f 60 16.0) mutants
 
 performanceExperimentsAll :: [Experiment]
 performanceExperimentsAll
     = concat [
-        performanceExperimentsQ "./examples/benchmark/divByN.gcl"       30 [0, 1, 2, 4, 8, 16],
-        performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     30 [0, 1, 2, 4, 8, 16],
-        performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       30 [0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/divByN.gcl"       50 [0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/memberOf.gcl"     50 [0, 1, 2, 4, 8, 16],
+        performanceExperimentsQ "./examples/benchmark/pullUp.gcl"       50 [0, 1, 2, 4, 8, 16],
 
-        performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..4]],
-        performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..4]],
-        performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..4]],
+        performanceExperimentsFast "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..6]],
+        performanceExperimentsFast "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..6]],
+        performanceExperimentsFast "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..6]],
 
-        performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..4]],
-        performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..4]],
-        performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..4]]
+        performanceExperimentsSlow "./examples/benchmark/divByN.gcl"    [k * 10 | k <- [1..6]],
+        performanceExperimentsSlow "./examples/benchmark/memberOf.gcl"  [k * 10 | k <- [1..6]],
+        performanceExperimentsSlow "./examples/benchmark/pullUp.gcl"    [k * 10 | k <- [1..6]]
     ]
