@@ -25,6 +25,10 @@
       {
         devShells.default = pkgs.mkShell {
           name = "psav";
+          # stdenv pins this to 1, which makes typst's datetime.today() return 1970-01-01
+          shellHook = ''
+            unset SOURCE_DATE_EPOCH
+          '';
           buildInputs = [
             hPkgs.ghc
             hPkgs.cabal-install

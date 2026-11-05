@@ -38,6 +38,8 @@
       columns: authors.len() * (1fr,),
       ..authors.map(a => text(size: 11pt)[#a.at(0) \ #a.at(1)]),
     )
+    v(0.8em)
+    text(size: 10pt)[Utrecht University \ #datetime.today().display("[month repr:long] [day], [year]")]
     v(1.5em)
   },
 )
