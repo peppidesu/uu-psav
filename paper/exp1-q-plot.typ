@@ -46,8 +46,19 @@
   })
 }
 
+// Control: no simplifier, no heuristic (only measured at Q = 1, K = 30).
+// Every Q is compared against this single value, so it is the flat line at 1×.
+#let control = "perf_simplifier-none_heuristic-off"
+#let control-mean(file) = {
+  let rows = raw-rows.filter(r => r.File.ends-with("/" + file) and r.Settings == control and float(r.K) == k-fixed)
+  float(rows.last().Mean)
+}
+
+#let l10(x) = calc.log(x, base: 10)
+#let ymin = l10(0.25)
+#let ymax = l10(4)
 #let y-ticks = (
-  (-3, [1 ms]), (-2, [10 ms]), (-1, [100 ms]), (0, [1 s]), (1, [10 s]), (2, [100 s]),
+  (l10(0.25), [0.25×]), (l10(0.5), [0.5×]), (0, [1×]), (l10(2), [2×]), (l10(4), [4×]),
 )
 
 #let panel(file, first: false) = cetz.canvas({
@@ -56,13 +67,14 @@
 
   let n = settings.len()
   let dx = 0.2 // x offset between neighbouring settings
+  let c = control-mean(file)
 
   plot.plot(
     size: (4.2, 4),
     x-label: [$Q$],
-    y-label: if first { [Execution time] } else { none },
+    y-label: if first { [Time / control time] } else { none },
     x-min: -0.5, x-max: 5.5,
-    y-min: -3, y-max: 2,
+    y-min: ymin, y-max: ymax,
     x-tick-step: none,
     x-ticks: qs.enumerate().map(((i, q)) => (i, str(q))),
     y-ticks: y-ticks,
@@ -70,6 +82,10 @@
     x-grid: false, y-grid: true,
     legend: none,
     {
+      plot.annotate({
+        cetz.draw.content((2.5, ymax + 0.15), anchor: "south", padding: -0.1, text(size: 9pt, raw(file)))
+      })
+      plot.add(((-0.5, 0), (5.5, 0)), style: (stroke: (paint: black, thickness: 0.8pt, dash: "dashed")))
       for (i, (key, _, col)) in settings.enumerate() {
         let off = (i - (n - 1) / 2) * dx / 2
         let rows = series(file, key)
@@ -78,14 +94,14 @@
 
         // Mean ± std: shaded band
         plot.add-fill-between(
-          rows.map(r => (at(r), lg(r.m + r.s))),
-          rows.map(r => (at(r), lg(r.m - r.s))),
+          rows.map(r => (at(r), l10((r.m + r.s) / c))),
+          rows.map(r => (at(r), l10(calc.max(r.m - r.s, 1e-9) / c))),
           style: (stroke: none, fill: col.transparentize(75%)),
         )
 
         // Mean
         plot.add(
-          rows.map(r => (at(r), lg(r.m))),
+          rows.map(r => (at(r), l10(r.m / c))),
           mark: "o", mark-size: 0.12,
           style: (stroke: (paint: col, thickness: 1.2pt)),
           mark-style: (stroke: col, fill: white),
@@ -112,7 +128,6 @@
     grid(
       columns: 3, column-gutter: 3.5em,
       ..files.enumerate().map(((i, f)) => align(center)[
-        #text(size: 9pt, raw(f)) \
         #panel(f, first: i == 0)
       ]),
     )
@@ -120,10 +135,10 @@
     legend
     v(0.3em)
     text(size: 8pt)[
-      Line: mean; band: mean $plus.minus$ stddev. Log scale.
+      Line: mean; band: mean $plus.minus$ stddev, divided by the control (no simplifier, no heuristic, $Q = 1$). Dashed line at 1×: no change; below it is faster than control. Log y axis.
     ]
   },
   kind: "plot",
   supplement: [Figure],
-  caption: [Execution time as a function of $Q$ for each benchmark ($k = 30$).],
+  caption: [Execution time relative to the control as a function of $Q$ for each benchmark ($k = 30$).],
 )

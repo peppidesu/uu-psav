@@ -92,7 +92,7 @@
   (lg(v), if v == 0 [0] else if v == 1 [1] else [$10^#(e - 1)$])
 })
 
-#let panel(mode, file, metric, top, row-label: none, x-label: false) = cetz.canvas({
+#let panel(mode, file, metric, top, row-label: none, x-label: false, heading: false) = cetz.canvas({
   import cetz-plot: *
 
   let m = modes.at(mode)
@@ -111,6 +111,11 @@
     x-grid: false, y-grid: true,
     legend: none,
     {
+      if heading {
+        plot.annotate({
+          cetz.draw.content(((m.x-min + m.x-max) / 2, top + 0.5 / 2.6 * top), anchor: "south", padding: 0, text(size: 9pt, raw(file)))
+        })
+      }
       for (i, (key, _, col, q)) in m.settings.enumerate() {
         let dashed = q != none and q != 1
         let off = (i - (n - 1) / 2) * m.dx
@@ -158,10 +163,9 @@
     grid(
       columns: 3, column-gutter: 3em, row-gutter: 0.8em,
       ..metrics.enumerate().map(((ri, (key, label))) => files.map(f => align(center)[
-        #if ri == 0 { text(size: 9pt, raw(f)); linebreak() }
         #panel(mode, f, key, tops.at(ri),
           row-label: if f == files.first() { label } else { none },
-          x-label: ri == metrics.len() - 1)
+          x-label: ri == metrics.len() - 1, heading: ri == 0)
       ])).flatten(),
     )
     v(0.5em)

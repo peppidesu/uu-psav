@@ -78,24 +78,23 @@ withNKQ ns ks qs e
 
 performanceExperimentsSlow :: String -> [Int] -> [Experiment]
 performanceExperimentsSlow file ks = concat [
-    (withNKQ [10] ks [1])  $ configHeuristicOff      $ configSimplifierNone  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [1])  $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [16]) $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file
+    (withNKQ [5] ks [1])  $ configHeuristicOff      $ configSimplifierNone  $ baseExperiment "perf" file,
+    (withNKQ [5] ks [1])  $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file,
+    (withNKQ [5] ks [16]) $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file
  ]
 performanceExperimentsFast :: String -> [Int] -> [Experiment]
 performanceExperimentsFast file ks = concat [
-    (withNKQ [10] ks [1])  $ configHeuristicOff      $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [1])  $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [1])  $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [1])  $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] ks [16]) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
+    (withNKQ [5] ks [1])  $ configHeuristicOff      $ configSimplifierFull  $ baseExperiment "perf" file,
+    (withNKQ [5] ks [1])  $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
+    (withNKQ [5] ks [1])  $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file,
+    (withNKQ [5] ks [16]) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
  ]
 
 performanceExperimentsQ :: String -> Int -> [Double] -> [Experiment]
 performanceExperimentsQ file k qs = concat [
-    (withNKQ [10] [k] qs) $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file,
-    (withNKQ [10] [k] qs) $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
-    (withNKQ [10] [k] qs) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
+    (withNKQ [5] [k] qs) $ configHeuristicOn       $ configSimplifierNone  $ baseExperiment "perf" file,
+    (withNKQ [5] [k] qs) $ configHeuristicOn       $ configSimplifierFull  $ baseExperiment "perf" file,
+    (withNKQ [5] [k] qs) $ configHeuristicOnBypass $ configSimplifierFull  $ baseExperiment "perf" file
  ]
 
 completenessExperiments :: String -> Int -> Double -> [Experiment]
@@ -121,7 +120,7 @@ experimentsMutants = do
     mutants <- getMutantPaths
     pure
         $ sortOn (\(Experiment _ _ _ n) -> n)
-        $ concatMap (\f -> completenessExperiments f 60 16.0) mutants
+        $ concatMap (\f -> completenessExperiments f 70 16.0) mutants
 
 performanceExperimentsAll :: [Experiment]
 performanceExperimentsAll

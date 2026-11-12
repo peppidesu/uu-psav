@@ -54,8 +54,6 @@ instance ToNamedRecord Statistic where
         "mtrMeanFeasibilityTrivial"             .= (mtrAvStdFeasibilityTrivial             $ statMetricsMean s),
         "mtrMeanFeasibilityPrunedZ3"            .= (mtrAvStdFeasibilityPrunedZ3            $ statMetricsMean s),
         "mtrMeanFeasibilityPrunedTrivial"       .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsMean s),
-        "mtrMeanFeasibilityPrunedAmountZ3"      .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsMean s),
-        "mtrMeanFeasibilityPrunedAmountTrivial" .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsMean s),
 
         "mtrMeanPathsInspected"                 .= (mtrAvStdPathsInspected                 $ statMetricsMean s),
         "mtrMeanFormulaLength"                  .= (mtrAvStdFormulaLength                  $ statMetricsMean s),
@@ -65,8 +63,7 @@ instance ToNamedRecord Statistic where
         "mtrStdFeasibilityTrivial"              .= (mtrAvStdFeasibilityTrivial             $ statMetricsStd s),
         "mtrStdFeasibilityPrunedZ3"             .= (mtrAvStdFeasibilityPrunedZ3            $ statMetricsStd s),
         "mtrStdFeasibilityPrunedTrivial"        .= (mtrAvStdFeasibilityPrunedTrivial       $ statMetricsStd s),
-        "mtrStdFeasibilityPrunedAmountZ3"       .= (mtrAvStdFeasibilityPrunedAmountZ3      $ statMetricsStd s),
-        "mtrStdFeasibilityPrunedAmountTrivial"  .= (mtrAvStdFeasibilityPrunedAmountTrivial $ statMetricsStd s),
+
 
         "mtrStdPathsInspected"                  .= (mtrAvStdPathsInspected                 $ statMetricsStd s),
         "mtrStdFormulaLength"                   .= (mtrAvStdFormulaLength                  $ statMetricsStd s),
@@ -101,8 +98,8 @@ instance DefaultOrdered Statistic where
 
 generateStatistics :: IO ()
 generateStatistics = do
-    -- let experiments = performanceExperimentsAll
-    experiments <- experimentsMutants
+    let experiments = performanceExperimentsAll
+    -- experiments <- experimentsMutants
 
     statistics <- mapM runExperiment experiments
     putStrLn "writing file..."

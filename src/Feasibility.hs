@@ -4,7 +4,7 @@ import GCLParser.GCLDatatype (Expr(..), opAnd)
 import Data.Tree (Tree(..))
 import WLP(wlp')
 import Optimize (optimize)
-import SMT (VarTypes, z3Check, Assignments, z3CheckBool)
+import SMT (VarTypes, Assignments, Z3Env, newZ3Env, z3CheckIn, z3CheckBoolIn)
 import Data.Maybe (isJust, fromMaybe)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Extra (concatMapM, firstJustM)
@@ -33,8 +33,8 @@ checkProb q k x | q == 0 = 1 - b
         b = int2Double x / int2Double k
 -- | Checks if the program with the list of statements (which should be given in reverse), and the given post condition (which should not be
 --  included in the statement list) is feasible.
-check :: Int -> VarTypes -> Expr -> [Stmt] -> AppM Bool
-check size types e ts = do
+check :: Z3Env -> Int -> VarTypes -> Expr -> [Stmt] -> AppM Bool
+check env size types e ts = do
     verbose <- asksConfig cfgVerbose
     k <- asksConfig cfgK
     q <- asksConfig cfgQ
@@ -52,11 +52,10 @@ check size types e ts = do
             else pure True
         else fromMaybe
             <$> (do
-                a <- liftIO $ z3CheckBool types predicate
+                a <- liftIO $ z3CheckBoolIn env types predicate
                 addMetrics mempty {
                     mtrFeasibilityZ3 = 1,
                     mtrFeasibilityPrunedZ3 = fromBool (not a),
-                    mtrFeasibilityPrunedAmountZ3 = if (not a) then size else 0,
                     mtrFormulaLength = exprSize predicate
                 }
                 return a
@@ -75,38 +74,39 @@ check size types e ts = do
         simpleCheck (LitB a) = do
             addMetrics mempty {
                 mtrFeasibilityTrivial = 1,
-                mtrFeasibilityPrunedTrivial = fromBool (not a),
-                mtrFeasibilityPrunedAmountTrivial = if not a then size else 0
+                mtrFeasibilityPrunedTrivial = fromBool (not a)
             }
             pure $ Just a
         simpleCheck _ = pure Nothing
 
 findCounterExample :: VarTypes -> PathTree -> AppM (Maybe Assignments)
-findCounterExample types = go [] id
+findCounterExample types tree = do
+    env <- liftIO newZ3Env
+    go env [] id tree
     where
     -- k maps a leaf's base wlp to the full path wlp, accumulated from ancestors
-    go :: [Stmt] -> (Expr -> Expr) -> PathTree -> AppM (Maybe Assignments)
-    go prefix k node@(Node (Assume e) []) = do
-        ok <- check (pathCount node) types e prefix
+    go :: Z3Env -> [Stmt] -> (Expr -> Expr) -> PathTree -> AppM (Maybe Assignments)
+    go env prefix k node@(Node (Assume e) []) = do
+        ok <- check env (pathCount node) types e prefix
         if ok
-            then verify types (k (wlp' (Assume e) (LitB True)))
+            then verify env types (k (wlp' (Assume e) (LitB True)))
             else pure Nothing
 
-    go _ k (Node x []) = verify types (k (wlp' x (LitB True)))
+    go env _ k (Node x []) = verify env types (k (wlp' x (LitB True)))
 
-    go prefix k node@(Node (Assume e) ts) = do
-        ok <- check (pathCount node) types e prefix
+    go env prefix k node@(Node (Assume e) ts) = do
+        ok <- check env (pathCount node) types e prefix
         if ok
-            then firstJustM (go (Assume e : prefix) (k . wlp' (Assume e))) ts
+            then firstJustM (go env (Assume e : prefix) (k . wlp' (Assume e))) ts
             else pure Nothing
 
-    go prefix k (Node x ts) = firstJustM (go (x : prefix) (k . wlp' x)) ts
+    go env prefix k (Node x ts) = firstJustM (go env (x : prefix) (k . wlp' x)) ts
 
-    verify t e = do
+    verify env t e = do
         opt <- optimize e
         addMetrics mempty {
             mtrPathsInspected = 1
         }
         case opt of
             LitB False -> pure (Just $ [("x", "any")])
-            expr -> liftIO (z3Check t (OpNeg expr))
+            expr -> liftIO (z3CheckIn env t (OpNeg expr))

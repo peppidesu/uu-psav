@@ -110,7 +110,7 @@
 #let lower-end = 0.7 // normalised extent of the lower part
 #let upper-start = 0.8 // normalised start of the upper part
 
-#let panel(file, k, first: false) = cetz.canvas({
+#let panel(file, k, first: false, heading: false) = cetz.canvas({
   import cetz-plot: *
   cetz.draw.set-style(axes: (grid-layer: -1, grid: (stroke: 0.4pt + luma(200))))
 
@@ -163,6 +163,12 @@
     x-grid: false, y-grid: true,
     legend: none,
     {
+      if heading {
+        let yh = if broken { 1 } else { ymax }
+        plot.annotate({
+          cetz.draw.content(((x-lo + x-hi) / 2, yh + 0.5 / 3.2 * yh), anchor: "south", padding: 0, text(size: 9pt, raw(file)))
+        })
+      }
       for (i, (key, _, col, q)) in settings.enumerate() {
         let parts = bars.at(i)
         if parts == none { continue }
@@ -215,8 +221,7 @@
     grid(
       columns: 3, column-gutter: 2.5em, row-gutter: 0.8em,
       ..(k-low, k-high).map(k => files.enumerate().map(((i, f)) => align(center)[
-        #if k == k-low { text(size: 9pt, raw(f)); linebreak() }
-        #panel(f, k, first: i == 0)
+        #panel(f, k, first: i == 0, heading: k == k-low)
       ])).flatten(),
     )
     v(0.5em)

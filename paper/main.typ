@@ -60,13 +60,13 @@ For our implementation, we were interested to see how extensive simplification c
 
 The results showed that in two out of three test programs, the simplifier was able to reason away nearly all infeasible paths. For the third program however, all the pruning was attributed to the solver instead.
 
+Despite this, execution time decreased only by a modest amount. Compared to a control with neither simplifier nor heuristic, the speedups we measured are small: mostly between 1× and 2×, with a maximum of about 2.9× (`pullUp`, $k = 40$). Individual settings are sometimes slower than the control. The combination that lets the simplifier's verdict bypass the solver is the most consistent, with a speedup in nearly all cases on `divByN` and `memberOf` (up to 1.8×), and it never loses more than about 15% on `pullUp`.
+
 = Related Work
 Symbolic execution and its main obstacle, path explosion, are surveyed by Baldoni et al. @baldoni2018symex. Bounded model checkers such as CBMC @clarke2004cbmc unroll the program up to a bound and pass the result to a SAT or SMT solver @biere1999bmc. We similarily unroll the program but use wlp to reason on each path in a backwards manner. The size of the resulting formulas is a known concern for w(l)p-based verifiers such as Boogie @barnett2005boogie, and Leino @leino2005efficientwp proposes a formulation that avoids exponential blow-up.
 
 Most symbolic executors check feasibility eagerly. KLEE @cadar2008klee queries the solver at every branch, and relies on path-search heuristics, including depth-first search, to decide where to explore next. We instead decide whether or not to check at all, using a depth-based probabilistic measure.
 
-KLEE rewrites expressions, splits constraints into independent sets and caches solutions @cadar2008klee in order to reduce the cost of solver queries. Empc @yao2025empc addresses the same problem from the other side, prioritising paths so that fewer infeasible ones are explored. Our simplifier (constant folding, absorption, deduplication and comparison merging) is most adjecent to the expression rewriting KLEE employs. Z3 @demoura2008z3 simplifies formulas itself, so our simplifier mainly saves the cost of calling the solver.
-
-
+KLEE rewrites expressions, splits constraints into independent sets and caches solutions @cadar2008klee in order to reduce the cost of solver queries. Empc @yao2025empc addresses the same problem from the other side, prioritising paths so that fewer infeasible ones are explored. Our simplifier (constant folding, absorption, deduplication and comparison merging) is most adjecent to the expression rewriting KLEE employs. Z3 @demoura2008z3 simplifies formulas itself, so our simplifier mainly saves the cost of calling the solver. This is in line with our measurements: since the solver already performs much of the same rewriting, the additional simplifier only yields a modest speedup, in contrast to the larger gains reported for KLEE's query optimisations @cadar2008klee.
 
 #bibliography("refs.bib", title: "References", style: "association-for-computing-machinery")

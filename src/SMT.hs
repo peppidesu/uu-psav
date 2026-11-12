@@ -4,6 +4,10 @@ module SMT (
 Assignments,
 z3Check,
 z3CheckBool,
+Z3Env,
+newZ3Env,
+z3CheckBoolIn,
+z3CheckIn,
 getTypes,
 Types(..),
 VarTypes
@@ -180,6 +184,29 @@ getAssignments model map =
            return $ (name,str)
         Nothing ->
            return $ (name,"<unknown>")
+
+-- | A long-lived Z3 context + solver, to be shared by many queries.
+newZ3Env :: IO Z3Env
+newZ3Env = newEnv Nothing mempty
+
+-- | Run a query in a scope of the shared solver: push, run, pop. Declarations
+-- and assertions made by the query are retracted afterwards.
+inScope :: Z3Env -> Z3 a -> IO a
+inScope env act = evalZ3WithEnv (do solverPush
+                                    r <- act
+                                    solverPop 1
+                                    return r) env
+
+-- | Like 'z3CheckBool', but reuses the given environment.
+z3CheckBoolIn :: Z3Env -> VarTypes -> G.Expr -> IO Bool
+z3CheckBoolIn env types expr = inScope env $ do
+    (ast, _) <- runStateT (smtAST types expr) Map.empty
+    assert ast
+    (== Sat) <$> check
+
+-- | Like 'z3Check', but reuses the given environment.
+z3CheckIn :: Z3Env -> VarTypes -> G.Expr -> IO (Maybe Assignments)
+z3CheckIn env types expr = inScope env $ z3Check' types expr
 
 z3CheckBool :: VarTypes -> G.Expr -> IO Bool
 z3CheckBool types expr = evalZ3 $ do

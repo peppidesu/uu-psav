@@ -19,16 +19,16 @@
 
 // (key, label, colour, Q)
 #let settings = (
-  ("perf_simplifier-none_heuristic-off", "none, heuristic off", rgb("#e69f00"), 1),
-  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 1),
+  ("perf_simplifier-none_heuristic-off", "none, heuristic off", rgb("#000000"), 1),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d52e00"), 1),
   ("perf_simplifier-full_heuristic-off", "full, heuristic off", rgb("#56b4e9"), 1),
-  ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 1),
-  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 1),
-  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d55e00"), 16),
-  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 16),
+  // ("perf_simplifier-full_heuristic-on", "full, heuristic on", rgb("#0072b2"), 1),
+  // ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#cc79a7"), 1),
+  ("perf_simplifier-none_heuristic-on", "none, heuristic on", rgb("#d52e00"), 16),
+  ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#5ea530"), 16),
 )
 
-#let ks = (10, 20, 30, 40)
+#let ks = (10, 20, 30, 40, 50, 60)
 #let floor-val = 1e-3
 #let lg(x) = calc.log(calc.max(x, floor-val), base: 10)
 
@@ -66,8 +66,8 @@
     size: (4.2, 4),
     x-label: [$k$],
     y-label: if first { [Execution time] } else { none },
-    x-min: 5, x-max: 45,
-    y-min: -3, y-max: 2,
+    x-min: 5, x-max: 65,
+    y-min: -3, y-max: 3,
     x-tick-step: none,
     x-ticks: ks.map(k => (k, str(k))),
     y-ticks: y-ticks,
@@ -75,6 +75,9 @@
     x-grid: false, y-grid: true,
     legend: none,
     {
+      plot.annotate({
+        cetz.draw.content((25, 2 + 0.5), anchor: "south", padding: 0, text(size: 9pt, raw(file)))
+      })
       for (i, (key, _, col, q)) in settings.enumerate() {
         let dashed = q != 1
         let off = (i - (n - 1) / 2) * dx
@@ -120,7 +123,6 @@
     grid(
       columns: 3, column-gutter: 3.5em,
       ..files.enumerate().map(((i, f)) => align(center)[
-        #text(size: 9pt, raw(f)) \
         #panel(f, first: i == 0)
       ]),
     )

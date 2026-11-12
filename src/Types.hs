@@ -207,8 +207,6 @@ data Metrics = Metrics
     , mtrFeasibilityPrunedZ3 :: !Int
     , mtrFeasibilityPrunedTrivial :: !Int
     , mtrFormulaLength :: !Int
-    , mtrFeasibilityPrunedAmountZ3 :: !Int
-    , mtrFeasibilityPrunedAmountTrivial :: !Int
     , mtrSimplifierElapsed :: !NominalDiffTime
     , mtrSimplifierCalls :: !Int
     , mtrPathsInspected :: !Int
@@ -234,7 +232,7 @@ timeSimplifier act = do
         pure a
 
 emptyMetrics :: Metrics
-emptyMetrics = Metrics 0 0 0 0 0 0 0 0 0 0 0
+emptyMetrics = Metrics 0 0 0 0 0 0 0 0 0
 
 addMetrics :: Metrics -> AppM ()
 addMetrics m = do
@@ -249,9 +247,7 @@ instance Semigroup Metrics where
         , mtrFeasibilityTrivial = mtrFeasibilityTrivial a + mtrFeasibilityTrivial b
         , mtrFeasibilityPrunedZ3 = mtrFeasibilityPrunedZ3 a + mtrFeasibilityPrunedZ3 b
         , mtrFeasibilityPrunedTrivial = mtrFeasibilityPrunedTrivial a  + mtrFeasibilityPrunedTrivial b
-        , mtrFeasibilityPrunedAmountZ3 = mtrFeasibilityPrunedAmountZ3 a + mtrFeasibilityPrunedAmountZ3 b
         , mtrFormulaLength = mtrFormulaLength a + mtrFormulaLength b
-        , mtrFeasibilityPrunedAmountTrivial = mtrFeasibilityPrunedAmountTrivial a + mtrFeasibilityPrunedAmountTrivial b
         , mtrSimplifierElapsed = mtrSimplifierElapsed a + mtrSimplifierElapsed b
         , mtrSimplifierCalls = mtrSimplifierCalls a + mtrSimplifierCalls b
         , mtrPathsInspected = mtrPathsInspected a + mtrPathsInspected b
@@ -276,8 +272,6 @@ data MetricsAvStd = MetricsAvStd
     , mtrAvStdFeasibilityPrunedZ3 :: !Double
     , mtrAvStdFeasibilityPrunedTrivial :: !Double
     , mtrAvStdFormulaLength :: !Double
-    , mtrAvStdFeasibilityPrunedAmountZ3 :: !Double
-    , mtrAvStdFeasibilityPrunedAmountTrivial :: !Double
     , mtrAvStdSimplifierTime :: !Double
     , mtrAvStdPathsInspected  :: !Double
     }
@@ -292,8 +286,6 @@ toMetricsAvStd ms = (
         mtrAvStdFeasibilityPrunedZ3             = average $ map (intToDouble . mtrFeasibilityPrunedZ3) ms,
         mtrAvStdFeasibilityPrunedTrivial        = average $ map (intToDouble . mtrFeasibilityPrunedTrivial) ms,
         mtrAvStdFormulaLength                   = average $ map (intToDouble . mtrFormulaLength) ms,
-        mtrAvStdFeasibilityPrunedAmountZ3       = average $ map (intToDouble . mtrFeasibilityPrunedAmountZ3) ms,
-        mtrAvStdFeasibilityPrunedAmountTrivial  = average $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
         mtrAvStdSimplifierTime                  = average $ map (\m ->
             (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
         ) ms,
@@ -307,8 +299,6 @@ toMetricsAvStd ms = (
          mtrAvStdFeasibilityPrunedZ3             = stdev $ map (intToDouble . mtrFeasibilityPrunedZ3) ms,
          mtrAvStdFeasibilityPrunedTrivial        = stdev $ map (intToDouble . mtrFeasibilityPrunedTrivial) ms,
          mtrAvStdFormulaLength                   = stdev $ map (intToDouble . mtrFormulaLength) ms,
-         mtrAvStdFeasibilityPrunedAmountZ3       = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountZ3) ms,
-         mtrAvStdFeasibilityPrunedAmountTrivial  = stdev $ map (intToDouble . mtrFeasibilityPrunedAmountTrivial) ms,
          mtrAvStdSimplifierTime                  = stdev $ map (\m ->
              (realToFrac $ mtrSimplifierElapsed m) / (realToFrac $ mtrSimplifierCalls m)
          ) ms,

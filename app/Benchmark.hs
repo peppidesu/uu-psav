@@ -32,8 +32,8 @@ main :: IO ()
 main = do
   secondExperiments <- experimentsMutants
   defaultMain [
-    -- bgroup "experiment=1" (makeBenchMarks performanceExperimentsAll 1),
-    bgroup "experiment=2" (makeBenchMarks secondExperiments 2)
+    bgroup "experiment=1" (makeBenchMarks performanceExperimentsAll 1)
+    -- bgroup "experiment=2" (makeBenchMarks secondExperiments 2)
     ]
 
 makeBenchMarks :: [Experiment] -> Int -> [Benchmark]
