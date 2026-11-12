@@ -61,10 +61,9 @@
   )
 }
 
-// x = k (linear), y = setting time / control time (log), one point per k
+// x = k (linear), y = speedup = control time / setting time (log), one point per k
 // (connected in k order). The dashed horizontal line at 1x is the control itself:
-// below it is faster than control, above it is slower.
-#let xticks = ((10, [10]), (20, [20]), (30, [30]), (40, [40]))
+// above it is faster than control, below it is slower.
 #let yticks = (
   (calc.log(0.25, base: 10), [0.25×]), (calc.log(0.5, base: 10), [0.5×]),
   (0, [1×]),
@@ -83,35 +82,35 @@
     name: "p",
     size: (4, 4),
     x-label: [$k$],
-    y-label: if first { [Time (relative to control)] } else { none },
-    x-min: 4, x-max: 46, y-min: calc.log(0.25, base: 10), y-max: calc.log(4, base: 10),
-    x-tick-step: none, x-ticks: xticks,
+    y-label: if first { [Speedup] } else { none },
+    x-min: 4, x-max: 66, y-min: calc.log(0.25, base: 10), y-max: calc.log(4, base: 10),
+    x-tick-step: none, x-ticks: ks.map(k => (k, str(k))),
     y-tick-step: none, y-ticks: yticks,
     x-grid: true, y-grid: true,
     legend: none,
     {
       plot.annotate({
-        cetz.draw.content((25, calc.log(4, base: 10) + 0.3), anchor: "south", padding: -0.05, text(size: 10pt, raw(file)))
+        cetz.draw.content((35, calc.log(4, base: 10) + 0.3), anchor: "south", padding: -0.05, text(size: 10pt, raw(file)))
       })
       for c in ctrl {
         plot.annotate({
           cetz.draw.content((c.k, calc.log(4, base: 10)), anchor: "north", padding: 0, text(size: 6pt, fmt-time(c.m)))
         })
       }
-      plot.add(((4, 0), (46, 0)), style: (stroke: (paint: black, thickness: 0.8pt, dash: "dashed")))
+      plot.add(((4, 0), (66, 0)), style: (stroke: (paint: black, thickness: 0.8pt, dash: "dashed")))
       for (key, _, col, q) in settings {
         let pts = series(file, key, q).map(r => {
           let c = ctrl.find(c => c.k == r.k)
-          if c == none { none } else { (r.k, calc.log(r.m / c.m, base: 10)) }
+          if c == none { none } else { (r.k, calc.log(c.m / r.m, base: 10)) }
         }).filter(p => p != none)
         if pts.len() == 0 { continue }
         let rows = series(file, key, q).filter(r => ctrl.find(c => c.k == r.k) != none)
         let band(sign) = rows.map(r => {
           let c = ctrl.find(c => c.k == r.k)
-          (r.k, calc.log(calc.max(r.m + sign * r.s, 1e-9) / c.m, base: 10))
+          (r.k, calc.log(c.m / calc.max(r.m + sign * r.s, 1e-9), base: 10))
         })
         plot.add-fill-between(
-          band(1), band(-1),
+          band(-1), band(1),
           style: (stroke: none, fill: col.transparentize(80%)),
         )
         plot.add(
@@ -148,10 +147,10 @@
     )
     legend
     text(size: 8pt)[
-
+      All experiments ran with $Q = 1$ and $N = 5$. bands show standard deviation.
     ]
   },
   kind: "plot",
   supplement: [Figure],
-  caption: [Execution time of different configurations relative to control for increasing $k$],
+  caption: [Speedup of different configurations over the control for increasing $k$],
 )

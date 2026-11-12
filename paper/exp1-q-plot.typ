@@ -72,7 +72,7 @@
   plot.plot(
     size: (4.2, 4),
     x-label: [$Q$],
-    y-label: if first { [Time / control time] } else { none },
+    y-label: if first { [Speedup over control] } else { none },
     x-min: -0.5, x-max: 5.5,
     y-min: ymin, y-max: ymax,
     x-tick-step: none,
@@ -94,14 +94,14 @@
 
         // Mean ± std: shaded band
         plot.add-fill-between(
-          rows.map(r => (at(r), l10((r.m + r.s) / c))),
-          rows.map(r => (at(r), l10(calc.max(r.m - r.s, 1e-9) / c))),
+          rows.map(r => (at(r), l10(c / calc.max(r.m - r.s, 1e-9)))),
+          rows.map(r => (at(r), l10(c / (r.m + r.s)))),
           style: (stroke: none, fill: col.transparentize(75%)),
         )
 
         // Mean
         plot.add(
-          rows.map(r => (at(r), l10(r.m / c))),
+          rows.map(r => (at(r), l10(c / r.m))),
           mark: "o", mark-size: 0.12,
           style: (stroke: (paint: col, thickness: 1.2pt)),
           mark-style: (stroke: col, fill: white),
@@ -135,10 +135,10 @@
     legend
     v(0.3em)
     text(size: 8pt)[
-      Line: mean; band: mean $plus.minus$ stddev, divided by the control (no simplifier, no heuristic, $Q = 1$). Dashed line at 1×: no change; below it is faster than control. Log y axis.
+      Line: mean; band: mean $plus.minus$ stddev, of the setting time; speedup is control time (no simplifier, no heuristic, $Q = 1$) divided by setting time. Dashed line at 1×: no change; above it is faster than control. Log y axis.
     ]
   },
   kind: "plot",
   supplement: [Figure],
-  caption: [Execution time relative to the control as a function of $Q$ for each benchmark ($k = 30$).],
+  caption: [Speedup over the control as a function of $Q$ for each benchmark ($k = 30$).],
 )
