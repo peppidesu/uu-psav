@@ -1,7 +1,7 @@
 #let title = [Expression rewriting as a proxy for bounded model checking]
 #let authors = (
   ([Pepijn Bakker], [2024713]),
-  ([Iris Scheepstra], [0000000]),
+  ([Iris Scheepstra], [4454413]),
   ([Konstantinos Tsikouris], [0000000]),
 )
 // ACM sigconf-style layout (two columns, US Letter), without conference metadata.
@@ -68,5 +68,85 @@ Symbolic execution and its main obstacle, path explosion, are surveyed by Baldon
 Most symbolic executors check feasibility eagerly. KLEE @cadar2008klee queries the solver at every branch, and relies on path-search heuristics, including depth-first search, to decide where to explore next. We instead decide whether or not to check at all, using a depth-based probabilistic measure.
 
 KLEE rewrites expressions, splits constraints into independent sets and caches solutions @cadar2008klee in order to reduce the cost of solver queries. Empc @yao2025empc addresses the same problem from the other side, prioritising paths so that fewer infeasible ones are explored. Our simplifier (constant folding, absorption, deduplication and comparison merging) is most adjecent to the expression rewriting KLEE employs. Z3 @demoura2008z3 simplifies formulas itself, so our simplifier mainly saves the cost of calling the solver. This is in line with our measurements: since the solver already performs much of the same rewriting, the additional simplifier only yields a modest speedup, in contrast to the larger gains reported for KLEE's query optimisations @cadar2008klee.
+
+= Implementation
+// We do bounded model checker, early stopping if false
+We implemented our verifier in haskell. We chose to create a bounded model checker, where only paths with a length up to a specified amount are verified. Path length is calculated based on how many statements are within it. // Mention if we do anything that makes what appears like 1 statement become multiple
+
+// Use wlp
+
+// Tree explanation
+
+// // Boolean formula's are first checked with simplifier and then z3,, using the bindings
+The boolean formulas generated throughout our program are always first checked with our own verifier. // if space elaborate a lot and add subheading
+If this does not resolve to either true or false, then we check the simplified formula using z3. // Insert citation
+For this we use the bindings created by // Insert citation
+Within our program, we do not normally represent formulas in the datatypes introduced here, so we first always have a conversion step.
+
+Our program has depth-based probabilistic feasibility checking, where deeper depths give lower probabilities. This is done, because the potential amount of paths being cut by discovering infeasibility decreases with depth. For the heuristic we use the following probability formula:
+FORMULA HERE.
+Q is a parameter we experiment with. To showcase what this formula does, here is the graph of probabilities given for k=constant:
+
+Our program has a second heuristic option, called bypass. Turning this on means our simplifier always checks the program, and the probability only effects if z3 calls are made after this step.
+
+// Mention what do if no feasible path found anywhere
+
+= Methodology // Maybe there is a better name or something
+// Here we explain the following probs:
+// - Specs used for benchmarks
+// - For statistics how many times we run 
+// - For benchmark that we use criterion
+// - Benchmark files used
+// - what heuristic of means
+
+= Experiment 1
+Within experiment one, we aim to find the most performant heuristic. 
+
+== Finding the best Q value
+In order to keep the figures readable and runtimes feasible, we need to determine which Q-values are used in the rest of the experiments. Therefore we plotted the mean execution time for 
+k=30 of // fancy way to descrive series of Q used
+
+// Insert figure of the Q
+
+Here we can see that when looking at full simplifier with bypass, Q=16 gives anywhere from the same results, to a 10x improvement. Therefore this is one of the Q-values used in the other experiments.
+
+However, when considering no simplifier, or simplifier without bypass, Q=16 worsens the outcomes for divByN.gcl. To ensure that these heuristics are fairly treated, Q=1 is also tested.
+
+== Comparison of the execution time of each heuristic
+// Intro time
+
+// Graph
+
+// Interpetation no possibles yet
+
+== Number of feasibility checks performed
+
+
+// Graph
+
+// Our simplifier can handle some functions really fucking well, 
+// which explains why bypass is good (in combi with it fast)
+// W/o bypass high q-values means important infeasible points are skipped leading to explosion in path that are checked. This can be seen in graph of prev section as well.
+// Simplifier cannot handle pullup, with explanation.
+// More shit
+// 
+
+== Total length of formulas checked
+
+== Conclusion
+
+= Experiment 2
+Our second experiment checks our verifier's completeness. These tests are ran using our best heuristic, which we found to be ...
+
+// To mention:
+// - talk about performance
+// - mention the kill rate
+
+= Conclusion
+// Simplification important, no matter if in z3 or locally
+// Heuristic has big effect
+// give our best combi
+// second experiment talk
+
 
 #bibliography("refs.bib", title: "References", style: "association-for-computing-machinery")
