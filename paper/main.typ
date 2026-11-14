@@ -110,6 +110,7 @@ In order to keep the figures readable and runtimes feasible, we need to determin
 k=30 of // fancy way to descrive series of Q used
 
 // Insert figure of the Q
+#include "exp1-q-plot.typ"
 
 Here we can see that when looking at full simplifier with bypass, Q=16 gives anywhere from the same results, to a 10x improvement. Therefore this is one of the Q-values used in the other experiments.
 
@@ -118,23 +119,30 @@ However, when considering no simplifier, or simplifier without bypass, Q=16 wors
 == Comparison of the execution time of each heuristic
 // Intro time
 
+#include "exp1-plot.typ"
 // Graph
 
 // Interpetation no possibles yet
 
 == Number of feasibility checks performed
 
+#include "feasibility-plot.typ"
+
 
 // Graph
 
-// Our simplifier can handle some functions really fucking well, 
-// which explains why bypass is good (in combi with it fast)
-// W/o bypass high q-values means important infeasible points are skipped leading to explosion in path that are checked. This can be seen in graph of prev section as well.
-// Simplifier cannot handle pullup, with explanation.
-// More shit
+As can be seen in the figure, almost everything that can be pruned with divByN.gcl and memberOf.gcl, is pruned by the simplifier. For these files, calling z3 if the simplifier does not resolve to false is not worth it. However, this is not the case for pullUp.gcl. This is because our simplifier cannot handle some of the formulas created by pullUp, making it never able to simplify to true or false. 
+// More conclusions 
 // 
 
+
+
 == Total length of formulas checked
+
+#include "metrics-plot.typ"
+
+// Does not have a super direct relationship with time, bc while we suspect checking these formulas to be a major contributer to the time, some formulas are checked way cheaper than others (which can also depend on simpy) 
+// 
 
 == Conclusion
 

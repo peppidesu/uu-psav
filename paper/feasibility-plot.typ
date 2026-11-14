@@ -151,7 +151,7 @@
   let short(label, q) = text(size: 7pt, rotate(-90deg, reflow: true, label.replace("heuristic ", "") + if q != 1 [ ($Q = #q$)]))
 
   plot.plot(
-    size: (4.2, 3.2),
+    size: (2.2, 3.2),
     x-label: none,
     y-label: if first { [Checks ($k = #k$)] } else { none },
     x-min: x-lo, x-max: x-hi,

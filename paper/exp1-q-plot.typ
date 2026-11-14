@@ -70,7 +70,7 @@
   let c = control-mean(file)
 
   plot.plot(
-    size: (4.2, 4),
+    size: (3.0, 4),
     x-label: [$Q$],
     y-label: if first { [Speedup over control] } else { none },
     x-min: -0.5, x-max: 5.5,
@@ -126,7 +126,7 @@
 #figure(
   {
     grid(
-      columns: 3, column-gutter: 3.5em,
+      columns: 2, column-gutter: 3.5em,
       ..files.enumerate().map(((i, f)) => align(center)[
         #panel(f, first: i == 0)
       ]),
