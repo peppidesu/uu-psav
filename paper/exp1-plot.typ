@@ -28,7 +28,7 @@
   ("perf_simplifier-full_heuristic-on-bypass", "full, heuristic on + bypass", rgb("#5ea530"), 16),
 )
 
-#let ks = (10, 20, 30, 40, 50, 60)
+#let ks = (10, 20, 30, 40) //, 50, 60)
 #let floor-val = 1e-3
 #let lg(x) = calc.log(calc.max(x, floor-val), base: 10)
 
@@ -53,7 +53,7 @@
 }
 
 #let y-ticks = (
-  (-3, [1 ms]), (-2, [10 ms]), (-1, [100 ms]), (0, [1 s]), (1, [10 s]), (2, [100 s]),
+  (-3, [1 ms]), (-2, [10 ms]), (-1, [100 ms]), (0, [1 s]), (1, [10 s]), // (2, [100 s]),
 )
 
 #let panel(file, first: false) = cetz.canvas({
@@ -63,10 +63,10 @@
   let dx = 0.6 // x offset between neighbouring settings, in K units
 
   plot.plot(
-    size: (4.2, 4),
+    size: (3, 4),
     x-label: [$k$],
     y-label: if first { [Execution time] } else { none },
-    x-min: 5, x-max: 65,
+    x-min: 5, x-max: 45,
     y-min: -3, y-max: 3,
     x-tick-step: none,
     x-ticks: ks.map(k => (k, str(k))),

@@ -127,7 +127,7 @@
   {
     grid(
       columns: 2, column-gutter: 3.5em,
-      ..files.enumerate().map(((i, f)) => align(center)[
+      ..files.enumerate().map(((i, f)) => align(right)[
         #panel(f, first: i == 0)
       ]),
     )

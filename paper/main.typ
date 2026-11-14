@@ -141,6 +141,10 @@ As can be seen in the figure, almost everything that can be pruned with divByN.g
 
 #include "metrics-plot.typ"
 
+// I say we drop the q graph here bc no interesting information
+
+The figure plots the total length of the formulas checked by z3 for feasibility checks. Formula length is defined by the number of variables and literals in the formula. Our heuristic consistently checks a smaller length, with it decreasing with Q. However, this does not correlate with the execution time very well. The statistic does not include the z3 calls for the final wlp. Therefore the best possible outcome for this statistic would be to not check any feasibility, which quite obviously is not efficient.
+
 // Does not have a super direct relationship with time, bc while we suspect checking these formulas to be a major contributer to the time, some formulas are checked way cheaper than others (which can also depend on simpy) 
 // 
 
