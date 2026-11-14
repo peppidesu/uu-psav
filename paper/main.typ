@@ -149,11 +149,17 @@ The figure plots the total length of the formulas checked by z3 for feasibility 
 // 
 
 == Conclusion
+Our best heuristic is full, heuristic on with Q=16 and bypass on. 
 
 = Experiment 2
 Our second experiment checks our verifier's completeness. These tests are ran using our best heuristic, which we found to be ...
 
 == Kill rate
+
+#include "exp2-kill-plot.typ"
+// graph idea: on x-axis put the n
+// on y-axis put kill amount
+// put line of supposed to kill and actually killed
 
 == Performance
 // To mention:
